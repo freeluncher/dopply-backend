@@ -20,27 +20,26 @@ jobs:
         username: ${{ secrets.VM_USER }}
         key: ${{ secrets.VM_KEY }}
         script: |
-          echo "📍 Current user: $(whoami)"
+          echo "📍 Login sebagai $(whoami)"
           cd ~
-          
-          # Jika folder belum ada, clone repo
+
           if [ ! -d "dopply-backend" ]; then
-            echo "📁 Folder dopply-backend tidak ditemukan. Meng-clone repository..."
+            echo "📁 Folder belum ada. Clone repo dari GitHub..."
             git clone https://${{ secrets.USERNAME }}:${{ secrets.PAT_TOKEN }}@github.com/freeluncher/dopply-backend.git
           fi
 
           cd dopply-backend
 
-          echo "🔄 Menarik update terbaru dari GitHub..."
-          git pull origin main
+          echo "🔄 Sinkronisasi penuh dengan GitHub..."
+          git remote set-url origin https://${{ secrets.USERNAME }}:${{ secrets.PAT_TOKEN }}@github.com/freeluncher/dopply-backend.git
+          git fetch origin main
+          git reset --hard origin/main
+          git clean -fd
 
-          # Setup virtual environment
+          echo "📦 Setup virtual environment & install dependency..."
           if [ ! -d "venv" ]; then
-            echo "🚀 Membuat virtual environment..."
             python3 -m venv venv
           fi
-
-          echo "📦 Mengaktifkan venv dan install requirements..."
           source venv/bin/activate
           pip install --upgrade pip
           pip install -r requirements.txt
@@ -48,5 +47,4 @@ jobs:
           echo "🔁 Restarting FastAPI service..."
           sudo systemctl restart dopply.service
 
-          echo "✅ Deploy selesai."
-
+          echo "✅ Deployment selesai."
