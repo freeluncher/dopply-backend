@@ -17,6 +17,8 @@ def get_db():
 
 @router.post("/login", response_model=UserOut)
 def login_user(user: UserCreate, db: Session = Depends(get_db)):
+    if not user.username or not user.password:
+        raise HTTPException(status_code=422, detail="Username and password are required")
     db_user = db.query(User).filter(User.username == user.username).first()
     if not db_user or not verify_password(user.password, db_user.hashed_password):
         raise HTTPException(status_code=400, detail="Invalid credentials")
