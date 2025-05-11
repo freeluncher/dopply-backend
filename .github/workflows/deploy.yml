@@ -13,15 +13,40 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v3
 
-    - name: Deploy to VM via SSH
+    - name: Deploy via SSH
       uses: appleboy/ssh-action@v1.0.0
       with:
         host: ${{ secrets.VM_HOST }}
         username: ${{ secrets.VM_USER }}
         key: ${{ secrets.VM_KEY }}
         script: |
+          echo "📍 Current user: $(whoami)"
+          cd ~
+          
+          # Jika folder belum ada, clone repo
+          if [ ! -d "dopply-backend" ]; then
+            echo "📁 Folder dopply-backend tidak ditemukan. Meng-clone repository..."
+            git clone https://${{ secrets.USERNAME }}:${{ secrets.PAT_TOKEN }}@github.com/freeluncher/dopply-backend.git
+          fi
+
           cd dopply-backend
+
+          echo "🔄 Menarik update terbaru dari GitHub..."
           git pull origin main
+
+          # Setup virtual environment
+          if [ ! -d "venv" ]; then
+            echo "🚀 Membuat virtual environment..."
+            python3 -m venv venv
+          fi
+
+          echo "📦 Mengaktifkan venv dan install requirements..."
           source venv/bin/activate
+          pip install --upgrade pip
           pip install -r requirements.txt
+
+          echo "🔁 Restarting FastAPI service..."
           sudo systemctl restart dopply.service
+
+          echo "✅ Deploy selesai."
+
