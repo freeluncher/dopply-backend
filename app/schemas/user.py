@@ -13,3 +13,15 @@ class UserOut(UserBase):
 
     class Config:
         orm_mode = True
+
+class LoginRequest(BaseModel):
+    username: str
+    password: str
+
+    class Config:
+        schema_extra = {
+            "example": {
+                "username": "string",
+                "password": "string"
+            }
+        }
