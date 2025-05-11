@@ -10,43 +10,57 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout code
+    - name: Checkout source code
       uses: actions/checkout@v3
 
-    - name: Deploy via SSH
+    - name: Deploy to Ubuntu VM via SSH
       uses: appleboy/ssh-action@v1.0.0
       with:
         host: ${{ secrets.VM_HOST }}
         username: ${{ secrets.VM_USER }}
         key: ${{ secrets.VM_KEY }}
         script: |
-          echo "📍 Current user: $(whoami)"
+          echo "📍 Login sebagai $(whoami)"
           cd ~
-          
-          # Jika folder belum ada, clone repo
+
+          # Hapus jika folder rusak/tidak ada .git
+          if [ -d "dopply-backend" ]; then
+            if [ ! -d "dopply-backend/.git" ]; then
+              echo "⚠️ Folder dopply-backend rusak. Menghapus..."
+              rm -rf dopply-backend
+            fi
+          fi
+
+          # Clone jika belum ada
           if [ ! -d "dopply-backend" ]; then
-            echo "📁 Folder dopply-backend tidak ditemukan. Meng-clone repository..."
+            echo "📁 Cloning repository dari GitHub..."
             git clone https://${{ secrets.USERNAME }}:${{ secrets.PAT_TOKEN }}@github.com/freeluncher/dopply-backend.git
           fi
 
           cd dopply-backend
 
-          echo "🔄 Menarik update terbaru dari GitHub..."
-          git pull origin main
+          echo "🔄 Sinkronisasi penuh dengan repo GitHub..."
+          git fetch origin main
+          git reset --hard origin/main
+          git clean -fd
 
-          # Setup virtual environment
+          echo "🐍 Setup virtual environment dan dependency..."
+
+          # Install pip dan venv jika belum ada
+          if ! command -v pip &> /dev/null; then
+            echo "📦 pip tidak ditemukan, install..."
+            sudo apt update && sudo apt install -y python3-pip python3-venv
+          fi
+
           if [ ! -d "venv" ]; then
-            echo "🚀 Membuat virtual environment..."
             python3 -m venv venv
           fi
 
-          echo "📦 Mengaktifkan venv dan install requirements..."
           source venv/bin/activate
           pip install --upgrade pip
           pip install -r requirements.txt
 
-          echo "🔁 Restarting FastAPI service..."
+          echo "🔁 Restart FastAPI systemd service..."
           sudo systemctl restart dopply.service
 
-          echo "✅ Deploy selesai."
-
+          echo "✅ Deployment berhasil!"
