@@ -63,4 +63,7 @@ jobs:
           echo "🔁 Restart FastAPI systemd service..."
           sudo systemctl restart dopply.service
 
+          echo "🔁 Reloading NGINX..."
+          sudo systemctl reload nginx
+
           echo "✅ Deployment berhasil!"
