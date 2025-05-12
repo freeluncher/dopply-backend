@@ -31,14 +31,14 @@ class Patient(Base):
 
 class RecordSource(enum.Enum):
     clinic = "clinic"
-    self_ = "self"
+    self_ = "self"  # Tetap gunakan self_ di Python, tapi di DB akan tersimpan sebagai 'self'
 
 class Record(Base):
     __tablename__ = "records"
     id = Column(Integer, primary_key=True, index=True)
     patient_id = Column(Integer, ForeignKey("patients.id"), nullable=False)
     doctor_id = Column(Integer, ForeignKey("users.id"), nullable=True)
-    source = Column(Enum(RecordSource), nullable=False)
+    source = Column(Enum(RecordSource, values_callable=lambda x: [e.value for e in x]), nullable=False)
     bpm_data = Column(JSON, nullable=True)
     start_time = Column(DateTime, nullable=False)
     end_time = Column(DateTime, nullable=True)
@@ -62,3 +62,5 @@ class Notification(Base):
     record_id = Column(Integer, ForeignKey("records.id"), nullable=False)
     status = Column(Enum(NotificationStatus), nullable=False)
     record = relationship("Record", back_populates="notifications")
+    from_patient = relationship("Patient")
+    to_doctor = relationship("User")
