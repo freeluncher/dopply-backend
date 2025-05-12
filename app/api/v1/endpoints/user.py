@@ -30,7 +30,7 @@ def login_user(user: LoginRequest, db: Session = Depends(get_db)):
         "is_active": db_user.is_active
     }
 
-@router.post("/register", response_model=UserOut)
+@router.post("/register", response_model=UserOut, status_code=201)
 def register_user(user: UserCreate, db: Session = Depends(get_db)):
     db_user = db.query(User).filter(User.username == user.username).first()
     if db_user:
