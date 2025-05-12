@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, validator
 
 class UserBase(BaseModel):
     name: str
@@ -6,6 +6,13 @@ class UserBase(BaseModel):
 
 class UserCreate(UserBase):
     password: str
+    role: str = "patient"  # hanya boleh 'patient' atau 'doctor' saat register
+
+    @validator('role')
+    def validate_role(cls, v):
+        if v not in ('patient', 'doctor'):
+            raise ValueError('Role must be either "patient" or "doctor"')
+        return v
 
 class UserOut(UserBase):
     id: int
@@ -15,13 +22,13 @@ class UserOut(UserBase):
         orm_mode = True
 
 class LoginRequest(BaseModel):
-    name: str
+    email: str
     password: str
 
     class Config:
         schema_extra = {
             "example": {
-                "name": "string",
+                "email": "user@email.com",
                 "password": "string"
             }
         }
