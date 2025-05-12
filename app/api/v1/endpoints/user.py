@@ -17,10 +17,10 @@ def get_db():
 
 @router.post("/login")
 def login_user(user: LoginRequest, db: Session = Depends(get_db)):
-    db_user = db.query(User).filter(User.name == user.name).first()
+    db_user = db.query(User).filter(User.email == user.email).first()
     if not db_user or not verify_password(user.password, db_user.password_hash):
         raise HTTPException(status_code=400, detail="Invalid credentials")
-    access_token = create_access_token(data={"sub": db_user.name}, expires_delta=timedelta(minutes=30))
+    access_token = create_access_token(data={"sub": db_user.email}, expires_delta=timedelta(minutes=30))
     return {
         "access_token": access_token,
         "token_type": "bearer",
@@ -32,17 +32,35 @@ def login_user(user: LoginRequest, db: Session = Depends(get_db)):
 
 @router.post("/register", response_model=UserOut, status_code=201)
 def register_user(user: UserCreate, db: Session = Depends(get_db)):
-    db_user = db.query(User).filter(User.name == user.name).first()
+    if user.role not in ["patient", "doctor"]:
+        raise HTTPException(status_code=400, detail="Role must be 'patient' or 'doctor'")
+    db_user = db.query(User).filter(User.email == user.email).first()
     if db_user:
-        raise HTTPException(status_code=400, detail="Name already registered")
+        raise HTTPException(status_code=400, detail="Email already registered")
     hashed_password = get_password_hash(user.password)
-    new_user = User(
-        name=user.name,
-        email=user.email,
-        password_hash=hashed_password,
-        role="patient"  # default role, bisa diubah sesuai kebutuhan
-    )
-    db.add(new_user)
-    db.commit()
-    db.refresh(new_user)
-    return new_user
+    if user.role == "doctor":
+        # Dokter baru harus menunggu persetujuan admin
+        new_user = User(
+            name=user.name,
+            email=user.email,
+            password_hash=hashed_password,
+            role="doctor"  # tetap simpan sebagai doctor
+        )
+        db.add(new_user)
+        db.commit()
+        db.refresh(new_user)
+        # Di sini Anda bisa menambahkan notifikasi ke admin atau flag is_active=False jika ingin
+        # Contoh: new_user.is_active = False (jika ada field is_active)
+        # db.commit()
+        return {**new_user.__dict__, "message": "Registration as doctor submitted, waiting for admin approval."}
+    else:
+        new_user = User(
+            name=user.name,
+            email=user.email,
+            password_hash=hashed_password,
+            role="patient"
+        )
+        db.add(new_user)
+        db.commit()
+        db.refresh(new_user)
+        return new_user
