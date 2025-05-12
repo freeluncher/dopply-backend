@@ -1,4 +1,5 @@
 from app.db.session import Base
-from app.models.medical import User, Patient, Record, Notification  # Import all models here for Alembic
+# Jangan import model di sini untuk menghindari circular import
+# Model akan di-import langsung oleh Alembic/env.py saat migrasi
 
 # Ensure Base is correctly imported and used for Alembic migrations.
