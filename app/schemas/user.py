@@ -1,7 +1,7 @@
 from pydantic import BaseModel
 
 class UserBase(BaseModel):
-    username: str
+    name: str
     email: str
 
 class UserCreate(UserBase):
@@ -9,19 +9,19 @@ class UserCreate(UserBase):
 
 class UserOut(UserBase):
     id: int
-    is_active: bool
+    role: str
 
     class Config:
         orm_mode = True
 
 class LoginRequest(BaseModel):
-    username: str
+    name: str
     password: str
 
     class Config:
         schema_extra = {
             "example": {
-                "username": "string",
+                "name": "string",
                 "password": "string"
             }
         }
