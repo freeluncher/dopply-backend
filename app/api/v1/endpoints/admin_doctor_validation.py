@@ -53,3 +53,17 @@ def validate_doctor(doctor_id: int, db: Session = Depends(get_db), admin: User =
     doctor.is_valid = True
     db.commit()
     return {"message": "Doctor validated successfully"}
+
+@router.get("/token/verify")
+def verify_token(credentials: HTTPAuthorizationCredentials = Security(security), db: Session = Depends(get_db)):
+    token = credentials.credentials
+    payload = verify_jwt_token(token)
+    user = db.query(User).filter(User.email == payload["sub"]).first()
+    if not user:
+        raise HTTPException(status_code=401, detail="Invalid token or user not found")
+    return {
+        "id": user.id,
+        "name": user.name,
+        "email": user.email,
+        "role": user.role.value
+    }
