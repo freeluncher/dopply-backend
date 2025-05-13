@@ -54,13 +54,18 @@ def register_user(user: UserCreate, db: Session = Depends(get_db)):
         db.add(new_user)
         db.commit()
         db.refresh(new_user)
-        # Tambahkan entri ke tabel doctors dengan is_valid=False
         from app.models.medical import Doctor
         new_doctor = Doctor(user_id=new_user.id, is_valid=False)
         db.add(new_doctor)
         db.commit()
         db.refresh(new_doctor)
-        return {**new_user.__dict__, "message": "Registration as doctor submitted, waiting for admin approval."}
+        # Return sesuai schema UserOut
+        return UserOut(
+            id=new_user.id,
+            name=new_user.name,
+            email=new_user.email,
+            role=new_user.role.value
+        )
     else:
         new_user = User(
             name=user.name,
@@ -71,10 +76,15 @@ def register_user(user: UserCreate, db: Session = Depends(get_db)):
         db.add(new_user)
         db.commit()
         db.refresh(new_user)
-        # Pastikan import Patient di sini untuk menghindari circular import
         from app.models.medical import Patient
         new_patient = Patient(user_id=new_user.id)
         db.add(new_patient)
         db.commit()
         db.refresh(new_patient)
-        return new_user
+        # Return sesuai schema UserOut
+        return UserOut(
+            id=new_user.id,
+            name=new_user.name,
+            email=new_user.email,
+            role=new_user.role.value
+        )
