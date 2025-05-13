@@ -22,7 +22,7 @@ class User(Base):
 class Patient(Base):
     __tablename__ = "patients"
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    patient_id = Column(Integer, ForeignKey("users.id"), nullable=False)  # ubah dari user_id ke patient_id
     birth_date = Column(Date, nullable=True)
     address = Column(String(255), nullable=True)
     medical_note = Column(Text, nullable=True)
