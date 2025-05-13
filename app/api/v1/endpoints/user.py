@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.schemas.user import UserCreate, UserOut, LoginRequest
-from app.models.medical import User
+from app.models.medical import User, Patient, Doctor
 from app.db.session import SessionLocal
 from app.core.security import verify_password, get_password_hash, create_access_token
 from datetime import timedelta
@@ -20,6 +20,11 @@ def login_user(user: LoginRequest, db: Session = Depends(get_db)):
     db_user = db.query(User).filter(User.email == user.email).first()
     if not db_user or not verify_password(user.password, db_user.password_hash):
         raise HTTPException(status_code=400, detail="Invalid credentials")
+    # Cek validasi dokter jika role doctor
+    is_valid = None
+    if db_user.role.value == "doctor":
+        doctor = db.query(Doctor).filter(Doctor.user_id == db_user.id).first()
+        is_valid = doctor.is_valid if doctor else False
     access_token = create_access_token(data={"sub": db_user.email}, expires_delta=timedelta(minutes=30))
     return {
         "access_token": access_token,
@@ -27,7 +32,8 @@ def login_user(user: LoginRequest, db: Session = Depends(get_db)):
         "id": db_user.id,
         "name": db_user.name,
         "email": db_user.email,
-        "role": db_user.role.value
+        "role": db_user.role.value,
+        "is_valid": is_valid
     }
 
 @router.post("/register", response_model=UserOut, status_code=201)
@@ -48,9 +54,12 @@ def register_user(user: UserCreate, db: Session = Depends(get_db)):
         db.add(new_user)
         db.commit()
         db.refresh(new_user)
-        # Di sini Anda bisa menambahkan notifikasi ke admin atau flag is_active=False jika ingin
-        # Contoh: new_user.is_active = False (jika ada field is_active)
-        # db.commit()
+        # Tambahkan entri ke tabel doctors dengan is_valid=False
+        from app.models.medical import Doctor
+        new_doctor = Doctor(user_id=new_user.id, is_valid=False)
+        db.add(new_doctor)
+        db.commit()
+        db.refresh(new_doctor)
         return {**new_user.__dict__, "message": "Registration as doctor submitted, waiting for admin approval."}
     else:
         new_user = User(
