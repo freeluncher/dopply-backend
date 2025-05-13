@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Enum, Date, Text, ForeignKey, DateTime, JSON
+from sqlalchemy import Column, Integer, String, Enum, Date, Text, ForeignKey, DateTime, JSON, Boolean
 from sqlalchemy.orm import relationship
 from app.db.base import Base
 import enum
@@ -64,3 +64,10 @@ class Notification(Base):
     record = relationship("Record", back_populates="notifications")
     from_patient = relationship("Patient")
     to_doctor = relationship("User")
+
+class Doctor(Base):
+    __tablename__ = "doctors"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, unique=True)
+    is_valid = Column(Boolean, default=False, nullable=False)
+    user = relationship("User")

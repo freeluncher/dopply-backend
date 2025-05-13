@@ -69,6 +69,13 @@ def upgrade() -> None:
     sa.PrimaryKeyConstraint('id')
     )
     op.create_index(op.f('ix_notifications_id'), 'notifications', ['id'], unique=False)
+    op.create_table('doctors',
+        sa.Column('id', sa.Integer(), nullable=False),
+        sa.Column('user_id', sa.Integer(), nullable=False, unique=True),
+        sa.Column('is_valid', sa.Boolean(), nullable=False, server_default=sa.sql.expression.false()),
+        sa.ForeignKeyConstraint(['user_id'], ['users.id']),
+        sa.PrimaryKeyConstraint('id')
+    )
     # ### end Alembic commands ###
 
 
@@ -83,4 +90,5 @@ def downgrade() -> None:
     op.drop_table('patients')
     op.drop_index(op.f('ix_users_id'), table_name='users')
     op.drop_table('users')
+    op.drop_table('doctors')
     # ### end Alembic commands ###
