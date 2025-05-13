@@ -37,7 +37,7 @@ def downgrade() -> None:
     op.drop_constraint('fk_records_doctor_id_doctors', 'records', type_='foreignkey')
     # Restore the old foreign key from records.doctor_id to users.id
     op.create_foreign_key(
-        'records_ibfk_2',
+        'records_ibfk_1',
         'records', 'users',
         ['doctor_id'], ['id'],
         ondelete='SET NULL'
