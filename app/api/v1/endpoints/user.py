@@ -5,8 +5,15 @@ from app.models.medical import User, Patient, Doctor
 from app.db.session import SessionLocal
 from app.core.security import verify_password, get_password_hash, create_access_token
 from datetime import timedelta
+from app.models.medical import Record
+from app.schemas.record import RecordOut
+from app.services.record_service import get_all_records, get_all_records_for_user
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from app.core.security import verify_jwt_token
 
 router = APIRouter()
+
+security = HTTPBearer()
 
 def get_db():
     db = SessionLocal()
@@ -14,6 +21,16 @@ def get_db():
         yield db
     finally:
         db.close()
+
+def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security), db: Session = Depends(get_db)):
+    try:
+        payload = verify_jwt_token(credentials.credentials)
+    except Exception:
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
+    user = db.query(User).filter(User.email == payload["sub"]).first()
+    if not user:
+        raise HTTPException(status_code=401, detail="User not found")
+    return user
 
 @router.post("/login")
 def login_user(user: LoginRequest, db: Session = Depends(get_db)):
@@ -88,3 +105,8 @@ def register_user(user: UserCreate, db: Session = Depends(get_db)):
             email=new_user.email,
             role=new_user.role.value
         )
+
+@router.get("/records", response_model=list[RecordOut])
+def get_records(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    records = get_all_records_for_user(db, current_user)
+    return records
