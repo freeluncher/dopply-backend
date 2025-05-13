@@ -55,7 +55,7 @@ def register_user(user: UserCreate, db: Session = Depends(get_db)):
         db.commit()
         db.refresh(new_user)
         from app.models.medical import Doctor
-        new_doctor = Doctor(user_id=new_user.id, is_valid=False)
+        new_doctor = Doctor(doctor_id=new_user.id, is_valid=False)
         db.add(new_doctor)
         db.commit()
         db.refresh(new_doctor)

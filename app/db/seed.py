@@ -15,7 +15,7 @@ def seed():
     db.refresh(patient_user)
 
     # Patient
-    patient = Patient(user_id=patient_user.id, birth_date=date(1990, 1, 1), address="123 Main St", medical_note="No allergies.")
+    patient = Patient(patient_id=patient_user.id, birth_date=date(1990, 1, 1), address="123 Main St", medical_note="No allergies.")
     db.add(patient)
     db.commit()
     db.refresh(patient)

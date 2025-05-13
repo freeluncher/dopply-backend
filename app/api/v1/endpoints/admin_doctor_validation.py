@@ -39,7 +39,7 @@ def list_doctor_validation_requests(db: Session = Depends(get_db), admin: User =
         user = db.query(User).filter(User.id == doctor.doctor_id).first()
         result.append({
             "doctor_id": doctor.id,
-            "user_id": doctor.doctor_id,
+            "doctor_id": doctor.doctor_id,
             "name": user.name if user else None,
             "email": user.email if user else None
         })
