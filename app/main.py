@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from app.api.v1.endpoints import user
+from app.api.v1.endpoints import monitoring
 from app.core.config import settings
 from app.db.session import engine
 from app.db.base import Base
@@ -12,6 +13,7 @@ app = FastAPI(title="Dopply Backend", version="1.0.0")
 
 # Include routers
 app.include_router(user.router, prefix="/api/v1", tags=["User"])
+app.include_router(monitoring.router, prefix="/v1", tags=["monitoring"])
 
 # Middleware (e.g., CORS)
 @app.on_event("startup")
