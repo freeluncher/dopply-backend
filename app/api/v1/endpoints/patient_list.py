@@ -18,7 +18,10 @@ def get_db():
 
 def get_current_doctor_id(credentials: HTTPAuthorizationCredentials = Security(security), db: Session = Depends(get_db)):
     token = credentials.credentials
-    payload = verify_jwt_token(token)
+    try:
+        payload = verify_jwt_token(token)
+    except Exception:
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
     user = db.query(User).filter(User.email == payload["sub"]).first()
     if not user or user.role.value != "doctor":
         raise HTTPException(status_code=403, detail="Doctor access required")
