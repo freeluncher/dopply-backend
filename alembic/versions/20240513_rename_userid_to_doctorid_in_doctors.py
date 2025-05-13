@@ -1,6 +1,6 @@
 """rename user_id to doctor_id in doctors table
 
-Revision ID: rename_userid_to_doctorid
+Revision ID: 20240513_rename_userid_to_doctorid
 Revises: 1ea31430ddae
 Create Date: 2025-05-13
 """
