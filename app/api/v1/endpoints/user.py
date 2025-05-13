@@ -39,12 +39,11 @@ def register_user(user: UserCreate, db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail="Email already registered")
     hashed_password = get_password_hash(user.password)
     if user.role == "doctor":
-        # Dokter baru harus menunggu persetujuan admin
         new_user = User(
             name=user.name,
             email=user.email,
             password_hash=hashed_password,
-            role="doctor"  # tetap simpan sebagai doctor
+            role="doctor"
         )
         db.add(new_user)
         db.commit()
@@ -63,4 +62,10 @@ def register_user(user: UserCreate, db: Session = Depends(get_db)):
         db.add(new_user)
         db.commit()
         db.refresh(new_user)
+        # Pastikan import Patient di sini untuk menghindari circular import
+        from app.models.medical import Patient
+        new_patient = Patient(user_id=new_user.id)
+        db.add(new_patient)
+        db.commit()
+        db.refresh(new_patient)
         return new_user
