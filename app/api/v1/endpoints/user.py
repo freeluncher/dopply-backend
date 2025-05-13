@@ -23,7 +23,7 @@ def login_user(user: LoginRequest, db: Session = Depends(get_db)):
     # Cek validasi dokter jika role doctor
     is_valid = None
     if db_user.role.value == "doctor":
-        doctor = db.query(Doctor).filter(Doctor.user_id == db_user.id).first()
+        doctor = db.query(Doctor).filter(Doctor.doctor_id == db_user.id).first()
         is_valid = doctor.is_valid if doctor else False
     access_token = create_access_token(data={"sub": db_user.email}, expires_delta=timedelta(minutes=30))
     return {
@@ -77,7 +77,7 @@ def register_user(user: UserCreate, db: Session = Depends(get_db)):
         db.commit()
         db.refresh(new_user)
         from app.models.medical import Patient
-        new_patient = Patient(user_id=new_user.id)
+        new_patient = Patient(patient_id=new_user.id)
         db.add(new_patient)
         db.commit()
         db.refresh(new_patient)
