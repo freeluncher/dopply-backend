@@ -71,9 +71,9 @@ def upgrade() -> None:
     op.create_index(op.f('ix_notifications_id'), 'notifications', ['id'], unique=False)
     op.create_table('doctors',
         sa.Column('id', sa.Integer(), nullable=False),
-        sa.Column('user_id', sa.Integer(), nullable=False, unique=True),
+        sa.Column('doctor_id', sa.Integer(), nullable=False, unique=True),  # ubah dari user_id ke doctor_id
         sa.Column('is_valid', sa.Boolean(), nullable=False, server_default=sa.sql.expression.false()),
-        sa.ForeignKeyConstraint(['user_id'], ['users.id']),
+        sa.ForeignKeyConstraint(['doctor_id'], ['users.id']),
         sa.PrimaryKeyConstraint('id')
     )
     # ### end Alembic commands ###

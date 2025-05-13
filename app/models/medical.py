@@ -68,6 +68,6 @@ class Notification(Base):
 class Doctor(Base):
     __tablename__ = "doctors"
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, unique=True)
+    doctor_id = Column(Integer, ForeignKey("users.id"), nullable=False, unique=True)  # ubah dari user_id ke doctor_id
     is_valid = Column(Boolean, default=False, nullable=False)
     user = relationship("User")
