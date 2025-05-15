@@ -136,11 +136,11 @@ def update_doctor_patient_association(
 def list_patients_for_doctor(doctor_id: int, db: Session = Depends(get_db)):
     # Ambil semua relasi doctor-patient yang masih ada
     assocs = db.query(DoctorPatientAssociation).filter_by(doctor_id=doctor_id).all()
-    patient_ids = [assoc.patient_id for assoc in assocs]
-    if not patient_ids:
+    patient_user_ids = [assoc.patient_id for assoc in assocs]
+    if not patient_user_ids:
         return []
-    # Ambil data pasien dari tabel Patient
-    patients = db.query(Patient).filter(Patient.patient_id.in_(patient_ids)).all()
+    # Ambil data pasien dari tabel Patient berdasarkan patient_id (FK ke users.id)
+    patients = db.query(Patient).filter(Patient.patient_id.in_(patient_user_ids)).all()
     return patients
 
 @router.delete("/doctors/{doctor_id}/unassign-patient/{patient_id}")
