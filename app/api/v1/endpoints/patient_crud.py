@@ -31,6 +31,11 @@ class DoctorPatientAssociationOut(BaseModel):
     class Config:
         orm_mode = True
 
+class AssignPatientByEmailIn(BaseModel):
+    email: str
+    status: Optional[str] = None
+    note: Optional[str] = None
+
 @router.get("/patients", response_model=List[PatientOut])
 def read_patients(db: Session = Depends(get_db)):
     return get_patients(db)
@@ -76,6 +81,33 @@ def assign_patient_to_doctor(
         assigned_at=datetime.utcnow(),
         status=data.status if data else None,
         note=data.note if data else None
+    )
+    db.add(assoc)
+    db.commit()
+    db.refresh(assoc)
+    return assoc
+
+@router.post("/doctors/{doctor_id}/assign-patient-by-email", response_model=DoctorPatientAssociationOut)
+def assign_patient_to_doctor_by_email(
+    doctor_id: int,
+    data: AssignPatientByEmailIn,
+    db: Session = Depends(get_db)
+):
+    doctor = db.query(Doctor).filter(Doctor.doctor_id == doctor_id).first()
+    if not doctor:
+        raise HTTPException(status_code=404, detail="Doctor not found")
+    patient = db.query(Patient).join(User).filter(User.email == data.email).first()
+    if not patient:
+        raise HTTPException(status_code=404, detail="Patient with this email not found")
+    assoc = db.query(DoctorPatientAssociation).filter_by(doctor_id=doctor_id, patient_id=patient.patient_id).first()
+    if assoc:
+        raise HTTPException(status_code=400, detail="Patient already assigned to doctor")
+    assoc = DoctorPatientAssociation(
+        doctor_id=doctor_id,
+        patient_id=patient.patient_id,
+        assigned_at=datetime.utcnow(),
+        status=data.status,
+        note=data.note
     )
     db.add(assoc)
     db.commit()
