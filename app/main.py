@@ -4,6 +4,7 @@ from app.api.v1.endpoints import monitoring
 from app.api.v1.endpoints import admin_doctor_validation
 from app.api.v1.endpoints import token_verify
 from app.api.v1.endpoints import patient_list
+from app.api.v1.endpoints import patient_crud
 from app.core.config import settings
 from app.db.session import engine
 from app.db.base import Base
@@ -20,6 +21,7 @@ app.include_router(monitoring.router, prefix="/v1", tags=["monitoring"])
 app.include_router(admin_doctor_validation.router, prefix="/v1/admin", tags=["admin"])
 app.include_router(token_verify.router, prefix="/v1", tags=["auth"])
 app.include_router(patient_list.router, prefix="/v1", tags=["patients"])
+app.include_router(patient_crud.router, prefix="/api/v1", tags=["Patient CRUD"])
 
 # Middleware (e.g., CORS)
 @app.on_event("startup")
