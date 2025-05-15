@@ -23,8 +23,8 @@ class User(Base):
 DoctorPatient = Table(
     "doctor_patient",
     Base.metadata,
-    Column("doctor_id", Integer, ForeignKey("doctors.id", ondelete="CASCADE"), primary_key=True),
-    Column("patient_id", Integer, ForeignKey("patients.id", ondelete="CASCADE"), primary_key=True)
+    Column("doctor_id", Integer, ForeignKey("doctors.doctor_id", ondelete="CASCADE"), primary_key=True),
+    Column("patient_id", Integer, ForeignKey("patients.patient_id", ondelete="CASCADE"), primary_key=True)
 )
 
 class Patient(Base):
