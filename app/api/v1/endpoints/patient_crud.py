@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.schemas.patient import PatientCreate, PatientUpdate, PatientOut
-from app.services.patient_service import get_patients, get_patient, create_patient, update_patient, delete_patient, create_patient_by_doctor, register_patient
+from app.services.patient_service import get_patients, get_patient, update_patient, delete_patient, register_patient
 from app.db.session import SessionLocal
 from typing import List
 
@@ -24,17 +24,6 @@ def read_patient(patient_id: int, db: Session = Depends(get_db)):
     if not patient:
         raise HTTPException(status_code=404, detail="Patient not found")
     return patient
-
-@router.post("/patients", response_model=PatientOut, status_code=201)
-def create_new_patient(patient: PatientCreate, db: Session = Depends(get_db)):
-    return create_patient(db, patient)
-
-@router.post("/patients/by-doctor", response_model=PatientOut, status_code=201)
-def create_patient_doctor(patient: PatientCreate, db: Session = Depends(get_db)):
-    try:
-        return create_patient_by_doctor(db, patient)
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
 
 @router.post("/patients/register", response_model=PatientOut, status_code=201)
 def register_patient_api(patient: PatientCreate, db: Session = Depends(get_db)):
