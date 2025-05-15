@@ -11,6 +11,7 @@ from app.services.record_service import get_all_records, get_all_records_for_use
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from app.core.security import verify_jwt_token
 from app.services.patient_service import register_user_universal
+from fastapi.responses import JSONResponse
 
 router = APIRouter()
 
@@ -40,7 +41,7 @@ def login_user(user: LoginRequest, db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail="Invalid credentials")
     # Cek validasi dokter jika role doctor
     is_valid = None
-    if db_user.role.value == "doctor":
+    if (db_user.role.value == "doctor"):
         doctor = db.query(Doctor).filter(Doctor.doctor_id == db_user.id).first()
         is_valid = doctor.is_valid if doctor else False
     access_token = create_access_token(data={"sub": db_user.email}, expires_delta=timedelta(minutes=30))
@@ -54,10 +55,33 @@ def login_user(user: LoginRequest, db: Session = Depends(get_db)):
         "is_valid": is_valid
     }
 
-@router.post("/register", response_model=UserOut, status_code=201)
+@router.post("/register", status_code=201)
 def register_user(user: UserRegister, db: Session = Depends(get_db)):
     try:
-        return register_user_universal(db, user)
+        created_user = register_user_universal(db, user)
+        # Response dinamis: jika role doctor, return info dokter, jika patient, return info pasien
+        if created_user.role == "doctor":
+            return JSONResponse(status_code=201, content={
+                "id": created_user.id,
+                "name": created_user.name,
+                "email": created_user.email,
+                "role": created_user.role,
+                "is_active": getattr(created_user, "is_active", True),
+                "is_valid": getattr(created_user, "is_valid", False)
+            })
+        else:
+            # Ambil data pasien
+            patient = db.query(Patient).filter(Patient.patient_id == created_user.id).first()
+            return JSONResponse(status_code=201, content={
+                "id": created_user.id,
+                "name": created_user.name,
+                "email": created_user.email,
+                "role": created_user.role,
+                "is_active": getattr(created_user, "is_active", True),
+                "birth_date": getattr(patient, "birth_date", None),
+                "address": getattr(patient, "address", None),
+                "medical_note": getattr(patient, "medical_note", None)
+            })
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
