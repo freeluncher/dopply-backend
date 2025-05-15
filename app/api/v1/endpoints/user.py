@@ -10,6 +10,8 @@ from app.schemas.record import RecordOut
 from app.services.record_service import get_all_records, get_all_records_for_user
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from app.core.security import verify_jwt_token
+from app.schemas.patient import PatientCreate, PatientOut
+from app.services.patient_service import register_patient
 
 router = APIRouter()
 
@@ -105,6 +107,13 @@ def register_user(user: UserCreate, db: Session = Depends(get_db)):
             email=new_user.email,
             role=new_user.role.value
         )
+
+@router.post("/register", response_model=PatientOut, status_code=201)
+def register_universal(patient: PatientCreate, db: Session = Depends(get_db)):
+    try:
+        return register_patient(db, patient)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 @router.get("/records", response_model=list[RecordOut])
 def get_records(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
