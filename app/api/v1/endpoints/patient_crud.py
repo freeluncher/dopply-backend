@@ -8,7 +8,7 @@ from typing import List, Optional
 from datetime import datetime
 from pydantic import BaseModel
 
-router = APIRouter()
+router = APIRouter(prefix="/api/v1")
 
 def get_db():
     db = SessionLocal()
