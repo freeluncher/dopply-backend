@@ -13,6 +13,7 @@ class RecordOut(BaseModel):
     classification: Optional[str]
     notes: Optional[str]
     shared_with: Optional[int]
+    patient_name: Optional[str]  # Tambahkan field ini
 
     class Config:
         orm_mode = True
