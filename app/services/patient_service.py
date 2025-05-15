@@ -8,10 +8,10 @@ def get_patients(db: Session) -> List[Patient]:
     return db.query(Patient).all()
 
 def get_patient(db: Session, patient_id: int) -> Optional[Patient]:
-    return db.query(Patient).filter(Patient.id == patient_id).first()
+    return db.query(Patient).filter(Patient.patient_id == patient_id).first()
 
 def update_patient(db: Session, patient_id: int, patient_data: PatientUpdate) -> Optional[Patient]:
-    patient = db.query(Patient).filter(Patient.id == patient_id).first()
+    patient = db.query(Patient).filter(Patient.patient_id == patient_id).first()
     if not patient:
         return None
     user = db.query(User).filter(User.id == patient.patient_id).first()
@@ -32,7 +32,7 @@ def update_patient(db: Session, patient_id: int, patient_data: PatientUpdate) ->
     return patient
 
 def delete_patient(db: Session, patient_id: int) -> bool:
-    patient = db.query(Patient).filter(Patient.id == patient_id).first()
+    patient = db.query(Patient).filter(Patient.patient_id == patient_id).first()
     if not patient:
         return False
     user = db.query(User).filter(User.id == patient.patient_id).first()
