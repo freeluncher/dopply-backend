@@ -139,8 +139,8 @@ def list_patients_for_doctor(doctor_id: int, db: Session = Depends(get_db)):
     patient_user_ids = [assoc.patient_id for assoc in assocs]
     if not patient_user_ids:
         return []
-    # Ambil data pasien dari tabel Patient berdasarkan patient_id (FK ke users.id)
-    patients = db.query(Patient).filter(Patient.patient_id.in_(patient_user_ids)).all()
+    # Ambil data pasien dari tabel Patient dan join ke User agar field name/email terisi
+    patients = db.query(Patient).join(User, Patient.patient_id == User.id).filter(Patient.patient_id.in_(patient_user_ids)).all()
     return patients
 
 @router.delete("/doctors/{doctor_id}/unassign-patient/{patient_id}")
