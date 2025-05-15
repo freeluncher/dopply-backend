@@ -78,7 +78,10 @@ def register_user(user: UserRegister, db: Session = Depends(get_db)):
                 "medical_note": getattr(patient, "medical_note", None)
             })
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        error_message = str(e)
+        if "Email sudah digunakan" in error_message:
+            raise HTTPException(status_code=400, detail="Email already registered. Please use a different email or activate your account if pre-registered.")
+        raise HTTPException(status_code=400, detail=error_message)
 
 @router.get("/records", response_model=list[RecordOut])
 def get_records(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
