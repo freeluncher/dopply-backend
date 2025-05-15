@@ -42,11 +42,10 @@ def delete_existing_patient(patient_id: int, db: Session = Depends(get_db)):
 
 @router.post("/doctors/{doctor_id}/assign-patient/{patient_id}")
 def assign_patient_to_doctor(doctor_id: int, patient_id: int, db: Session = Depends(get_db)):
-    doctor = db.query(Doctor).filter(Doctor.id == doctor_id).first()
-    patient = db.query(Patient).filter(Patient.id == patient_id).first()
+    doctor = db.query(Doctor).filter(Doctor.doctor_id == doctor_id).first()
+    patient = db.query(Patient).filter(Patient.patient_id == patient_id).first()
     if not doctor or not patient:
         raise HTTPException(status_code=404, detail="Doctor or patient not found")
-    # Check if already assigned
     exists = db.execute(DoctorPatient.select().where(DoctorPatient.c.doctor_id == doctor_id, DoctorPatient.c.patient_id == patient_id)).first()
     if exists:
         raise HTTPException(status_code=400, detail="Patient already assigned to doctor")
