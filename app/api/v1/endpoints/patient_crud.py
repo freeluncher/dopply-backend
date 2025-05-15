@@ -25,8 +25,8 @@ def read_patient(patient_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Patient not found")
     return patient
 
-@router.post("/patients/register", response_model=PatientOut, status_code=201)
-def register_patient_api(patient: PatientCreate, db: Session = Depends(get_db)):
+@router.post("/register", response_model=PatientOut, status_code=201)
+def register_universal(patient: PatientCreate, db: Session = Depends(get_db)):
     try:
         return register_patient(db, patient)
     except Exception as e:
