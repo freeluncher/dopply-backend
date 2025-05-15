@@ -51,8 +51,7 @@ def register_user_universal(db, data):
             name=data.name,
             email=data.email,
             password_hash=hashed_password,
-            role=data.role,
-            is_active=True
+            role=data.role
         )
         db.add(user)
         db.commit()
@@ -76,7 +75,6 @@ def register_user_universal(db, data):
     elif user.role == "patient" and (not user.password_hash or user.password_hash == ""):
         # Aktivasi pasien yang sudah didaftarkan dokter
         user.password_hash = get_password_hash(data.password)
-        user.is_active = True
         db.commit()
         db.refresh(user)
         patient = db.query(Patient).filter(Patient.patient_id == user.id).first()
