@@ -3,8 +3,10 @@ from sqlalchemy.orm import Session
 from app.schemas.patient import PatientCreate, PatientUpdate, PatientOut
 from app.services.patient_service import get_patients, get_patient, update_patient, delete_patient
 from app.db.session import SessionLocal
-from app.models.medical import Doctor, Patient, User, DoctorPatient
-from typing import List
+from app.models.medical import Doctor, Patient, User, DoctorPatientAssociation
+from typing import List, Optional
+from datetime import datetime
+from pydantic import BaseModel
 
 router = APIRouter()
 
@@ -14,6 +16,20 @@ def get_db():
         yield db
     finally:
         db.close()
+
+class DoctorPatientAssociationIn(BaseModel):
+    status: Optional[str] = None
+    note: Optional[str] = None
+
+class DoctorPatientAssociationOut(BaseModel):
+    doctor_id: int
+    patient_id: int
+    assigned_at: datetime
+    status: Optional[str] = None
+    note: Optional[str] = None
+
+    class Config:
+        orm_mode = True
 
 @router.get("/patients", response_model=List[PatientOut])
 def read_patients(db: Session = Depends(get_db)):
@@ -40,23 +56,60 @@ def delete_existing_patient(patient_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Patient not found")
     return None
 
-@router.post("/doctors/{doctor_id}/assign-patient/{patient_id}")
-def assign_patient_to_doctor(doctor_id: int, patient_id: int, db: Session = Depends(get_db)):
+@router.post("/doctors/{doctor_id}/assign-patient/{patient_id}", response_model=DoctorPatientAssociationOut)
+def assign_patient_to_doctor(
+    doctor_id: int,
+    patient_id: int,
+    data: DoctorPatientAssociationIn = None,
+    db: Session = Depends(get_db)
+):
     doctor = db.query(Doctor).filter(Doctor.doctor_id == doctor_id).first()
     patient = db.query(Patient).filter(Patient.patient_id == patient_id).first()
     if not doctor or not patient:
         raise HTTPException(status_code=404, detail="Doctor or patient not found")
-    exists = db.execute(DoctorPatient.select().where(DoctorPatient.c.doctor_id == doctor_id, DoctorPatient.c.patient_id == patient_id)).first()
-    if exists:
+    assoc = db.query(DoctorPatientAssociation).filter_by(doctor_id=doctor_id, patient_id=patient_id).first()
+    if assoc:
         raise HTTPException(status_code=400, detail="Patient already assigned to doctor")
-    db.execute(DoctorPatient.insert().values(doctor_id=doctor_id, patient_id=patient_id))
+    assoc = DoctorPatientAssociation(
+        doctor_id=doctor_id,
+        patient_id=patient_id,
+        assigned_at=datetime.utcnow(),
+        status=data.status if data else None,
+        note=data.note if data else None
+    )
+    db.add(assoc)
     db.commit()
-    return {"message": "Patient assigned to doctor"}
+    db.refresh(assoc)
+    return assoc
+
+@router.patch("/doctors/{doctor_id}/patients/{patient_id}", response_model=DoctorPatientAssociationOut)
+def update_doctor_patient_association(
+    doctor_id: int,
+    patient_id: int,
+    data: DoctorPatientAssociationIn,
+    db: Session = Depends(get_db)
+):
+    assoc = db.query(DoctorPatientAssociation).filter_by(doctor_id=doctor_id, patient_id=patient_id).first()
+    if not assoc:
+        raise HTTPException(status_code=404, detail="Relation not found")
+    if data.status is not None:
+        assoc.status = data.status
+    if data.note is not None:
+        assoc.note = data.note
+    db.commit()
+    db.refresh(assoc)
+    return assoc
+
+@router.get("/doctors/{doctor_id}/patients", response_model=List[DoctorPatientAssociationOut])
+def list_patients_for_doctor(doctor_id: int, db: Session = Depends(get_db)):
+    assocs = db.query(DoctorPatientAssociation).filter_by(doctor_id=doctor_id).all()
+    return assocs
 
 @router.delete("/doctors/{doctor_id}/unassign-patient/{patient_id}")
 def unassign_patient_from_doctor(doctor_id: int, patient_id: int, db: Session = Depends(get_db)):
-    result = db.execute(DoctorPatient.delete().where(DoctorPatient.c.doctor_id == doctor_id, DoctorPatient.c.patient_id == patient_id))
-    db.commit()
-    if result.rowcount == 0:
+    assoc = db.query(DoctorPatientAssociation).filter_by(doctor_id=doctor_id, patient_id=patient_id).first()
+    if not assoc:
         raise HTTPException(status_code=404, detail="Relation not found")
+    db.delete(assoc)
+    db.commit()
     return {"message": "Patient unassigned from doctor"}
