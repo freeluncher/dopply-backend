@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from app.schemas.user import UserCreate, UserOut, LoginRequest
+from app.schemas.user import UserCreate, UserOut, LoginRequest, UserRegister
 from app.models.medical import User, Patient, Doctor
 from app.db.session import SessionLocal
 from app.core.security import verify_password, get_password_hash, create_access_token
@@ -10,8 +10,7 @@ from app.schemas.record import RecordOut
 from app.services.record_service import get_all_records, get_all_records_for_user
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from app.core.security import verify_jwt_token
-from app.schemas.patient import PatientCreate, PatientOut
-from app.services.patient_service import register_patient
+from app.services.patient_service import register_user_universal
 
 router = APIRouter()
 
@@ -55,10 +54,10 @@ def login_user(user: LoginRequest, db: Session = Depends(get_db)):
         "is_valid": is_valid
     }
 
-@router.post("/register", response_model=PatientOut, status_code=201)
-def register_user(patient: PatientCreate, db: Session = Depends(get_db)):
+@router.post("/register", response_model=UserOut, status_code=201)
+def register_user(user: UserRegister, db: Session = Depends(get_db)):
     try:
-        return register_patient(db, patient)
+        return register_user_universal(db, user)
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 

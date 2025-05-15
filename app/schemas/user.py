@@ -1,4 +1,6 @@
-from pydantic import BaseModel, validator
+from pydantic import BaseModel, validator, EmailStr
+from typing import Optional
+from datetime import date
 
 class UserBase(BaseModel):
     name: str
@@ -32,3 +34,22 @@ class LoginRequest(BaseModel):
                 "password": "string"
             }
         }
+
+class UserRegister(BaseModel):
+    name: str
+    email: EmailStr
+    password: str
+    role: str  # 'patient' atau 'doctor'
+    birth_date: Optional[date] = None
+    address: Optional[str] = None
+    medical_note: Optional[str] = None
+
+class UserOut(BaseModel):
+    id: int
+    name: str
+    email: str
+    role: str
+    is_active: Optional[bool] = None
+
+    class Config:
+        orm_mode = True
