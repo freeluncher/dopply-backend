@@ -1,20 +1,17 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from app.schemas.user import UserCreate, UserOut, LoginRequest, UserRegister
-from app.models.medical import User, Patient, Doctor
-from app.db.session import SessionLocal
-from app.core.security import verify_password, get_password_hash, create_access_token
-from datetime import timedelta
-from app.models.medical import Record
-from app.schemas.record import RecordOut
-from app.services.record_service import get_all_records, get_all_records_for_user
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from app.core.security import verify_jwt_token
-from app.services.patient_service import register_user_universal
 from fastapi.responses import JSONResponse
+from app.schemas.user import UserRegister, UserOut, LoginRequest
+from app.models.medical import User, Patient, Doctor, Record
+from app.db.session import SessionLocal
+from app.core.security import verify_password, get_password_hash, create_access_token, verify_jwt_token
+from datetime import timedelta
+from app.schemas.record import RecordOut
+from app.services.record_service import get_all_records_for_user
+from app.services.patient_service import register_user_universal
 
 router = APIRouter()
-
 security = HTTPBearer()
 
 def get_db():
@@ -39,9 +36,8 @@ def login_user(user: LoginRequest, db: Session = Depends(get_db)):
     db_user = db.query(User).filter(User.email == user.email).first()
     if not db_user or not verify_password(user.password, db_user.password_hash):
         raise HTTPException(status_code=400, detail="Invalid credentials")
-    # Cek validasi dokter jika role doctor
     is_valid = None
-    if (db_user.role.value == "doctor"):
+    if db_user.role.value == "doctor":
         doctor = db.query(Doctor).filter(Doctor.doctor_id == db_user.id).first()
         is_valid = doctor.is_valid if doctor else False
     access_token = create_access_token(data={"sub": db_user.email}, expires_delta=timedelta(minutes=30))
@@ -59,18 +55,17 @@ def login_user(user: LoginRequest, db: Session = Depends(get_db)):
 def register_user(user: UserRegister, db: Session = Depends(get_db)):
     try:
         created_user = register_user_universal(db, user)
-        # Response dinamis: jika role doctor, return info dokter, jika patient, return info pasien
         if created_user.role == "doctor":
+            doctor = db.query(Doctor).filter(Doctor.doctor_id == created_user.id).first()
             return JSONResponse(status_code=201, content={
                 "id": created_user.id,
                 "name": created_user.name,
                 "email": created_user.email,
                 "role": created_user.role,
                 "is_active": getattr(created_user, "is_active", True),
-                "is_valid": getattr(created_user, "is_valid", False)
+                "is_valid": getattr(doctor, "is_valid", False)
             })
         else:
-            # Ambil data pasien
             patient = db.query(Patient).filter(Patient.patient_id == created_user.id).first()
             return JSONResponse(status_code=201, content={
                 "id": created_user.id,

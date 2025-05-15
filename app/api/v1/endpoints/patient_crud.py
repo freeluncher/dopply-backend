@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.schemas.patient import PatientCreate, PatientUpdate, PatientOut
-from app.services.patient_service import get_patients, get_patient, update_patient, delete_patient, register_patient
+from app.services.patient_service import get_patients, get_patient, update_patient, delete_patient
 from app.db.session import SessionLocal
 from typing import List
 
