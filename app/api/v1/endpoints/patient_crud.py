@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from app.schemas.patient import PatientCreate, PatientUpdate, PatientOut
 from app.services.patient_service import get_patients, get_patient, update_patient, delete_patient
 from app.db.session import SessionLocal
+from app.models.medical import Doctor, Patient, User, DoctorPatient
 from typing import List
 
 router = APIRouter()
@@ -38,3 +39,25 @@ def delete_existing_patient(patient_id: int, db: Session = Depends(get_db)):
     if not success:
         raise HTTPException(status_code=404, detail="Patient not found")
     return None
+
+@router.post("/doctors/{doctor_id}/assign-patient/{patient_id}")
+def assign_patient_to_doctor(doctor_id: int, patient_id: int, db: Session = Depends(get_db)):
+    doctor = db.query(Doctor).filter(Doctor.id == doctor_id).first()
+    patient = db.query(Patient).filter(Patient.id == patient_id).first()
+    if not doctor or not patient:
+        raise HTTPException(status_code=404, detail="Doctor or patient not found")
+    # Check if already assigned
+    exists = db.execute(DoctorPatient.select().where(DoctorPatient.c.doctor_id == doctor_id, DoctorPatient.c.patient_id == patient_id)).first()
+    if exists:
+        raise HTTPException(status_code=400, detail="Patient already assigned to doctor")
+    db.execute(DoctorPatient.insert().values(doctor_id=doctor_id, patient_id=patient_id))
+    db.commit()
+    return {"message": "Patient assigned to doctor"}
+
+@router.delete("/doctors/{doctor_id}/unassign-patient/{patient_id}")
+def unassign_patient_from_doctor(doctor_id: int, patient_id: int, db: Session = Depends(get_db)):
+    result = db.execute(DoctorPatient.delete().where(DoctorPatient.c.doctor_id == doctor_id, DoctorPatient.c.patient_id == patient_id))
+    db.commit()
+    if result.rowcount == 0:
+        raise HTTPException(status_code=404, detail="Relation not found")
+    return {"message": "Patient unassigned from doctor"}

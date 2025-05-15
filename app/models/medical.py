@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Enum, Date, Text, ForeignKey, DateTime, JSON, Boolean
+from sqlalchemy import Column, Integer, String, Enum, Date, Text, ForeignKey, DateTime, JSON, Boolean, Table
 from sqlalchemy.orm import relationship
 from app.db.base import Base
 import enum
@@ -19,6 +19,14 @@ class User(Base):
     records_as_doctor = relationship("Record", back_populates="doctor", foreign_keys='Record.doctor_id')
     records_shared = relationship("Record", back_populates="shared_with_user", foreign_keys='Record.shared_with')
 
+# Relasi many-to-many doctor-patient
+DoctorPatient = Table(
+    "doctor_patient",
+    Base.metadata,
+    Column("doctor_id", Integer, ForeignKey("doctors.id", ondelete="CASCADE"), primary_key=True),
+    Column("patient_id", Integer, ForeignKey("patients.id", ondelete="CASCADE"), primary_key=True)
+)
+
 class Patient(Base):
     __tablename__ = "patients"
     id = Column(Integer, primary_key=True, index=True)
@@ -28,6 +36,7 @@ class Patient(Base):
     medical_note = Column(Text, nullable=True)
     user = relationship("User", back_populates="patients")
     records = relationship("Record", back_populates="patient")
+    doctors = relationship("Doctor", secondary=DoctorPatient, back_populates="patients")
 
 class RecordSource(enum.Enum):
     clinic = "clinic"
@@ -71,3 +80,4 @@ class Doctor(Base):
     doctor_id = Column(Integer, ForeignKey("users.id"), nullable=False, unique=True)  # ubah dari user_id ke doctor_id
     is_valid = Column(Boolean, default=False, nullable=False)
     user = relationship("User")
+    patients = relationship("Patient", secondary=DoctorPatient, back_populates="doctors")
