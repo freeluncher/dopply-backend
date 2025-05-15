@@ -55,61 +55,8 @@ def login_user(user: LoginRequest, db: Session = Depends(get_db)):
         "is_valid": is_valid
     }
 
-@router.post("/register", response_model=UserOut, status_code=201)
-def register_user(user: UserCreate, db: Session = Depends(get_db)):
-    if user.role not in ["patient", "doctor"]:
-        raise HTTPException(status_code=400, detail="Role must be 'patient' or 'doctor'")
-    db_user = db.query(User).filter(User.email == user.email).first()
-    if db_user:
-        raise HTTPException(status_code=400, detail="Email already registered")
-    hashed_password = get_password_hash(user.password)
-    if user.role == "doctor":
-        new_user = User(
-            name=user.name,
-            email=user.email,
-            password_hash=hashed_password,
-            role="doctor"
-        )
-        db.add(new_user)
-        db.commit()
-        db.refresh(new_user)
-        from app.models.medical import Doctor
-        new_doctor = Doctor(doctor_id=new_user.id, is_valid=False)
-        db.add(new_doctor)
-        db.commit()
-        db.refresh(new_doctor)
-        # Return sesuai schema UserOut
-        return UserOut(
-            id=new_user.id,
-            name=new_user.name,
-            email=new_user.email,
-            role=new_user.role.value
-        )
-    else:
-        new_user = User(
-            name=user.name,
-            email=user.email,
-            password_hash=hashed_password,
-            role="patient"
-        )
-        db.add(new_user)
-        db.commit()
-        db.refresh(new_user)
-        from app.models.medical import Patient
-        new_patient = Patient(patient_id=new_user.id)
-        db.add(new_patient)
-        db.commit()
-        db.refresh(new_patient)
-        # Return sesuai schema UserOut
-        return UserOut(
-            id=new_user.id,
-            name=new_user.name,
-            email=new_user.email,
-            role=new_user.role.value
-        )
-
 @router.post("/register", response_model=PatientOut, status_code=201)
-def register_universal(patient: PatientCreate, db: Session = Depends(get_db)):
+def register_user(patient: PatientCreate, db: Session = Depends(get_db)):
     try:
         return register_patient(db, patient)
     except Exception as e:
