@@ -62,7 +62,8 @@ def register_user(user: UserRegister, db: Session = Depends(get_db)):
                 "name": created_user.name,
                 "email": created_user.email,
                 "role": created_user.role,
-                "is_active": getattr(created_user, "is_active", True),
+                # Only include is_active for doctor
+                "is_active": True,  # Doctor is always active after registration, but validation is via is_valid
                 "is_valid": getattr(doctor, "is_valid", False)
             })
         else:
@@ -72,7 +73,7 @@ def register_user(user: UserRegister, db: Session = Depends(get_db)):
                 "name": created_user.name,
                 "email": created_user.email,
                 "role": created_user.role,
-                "is_active": getattr(created_user, "is_active", True),
+                # Do not include is_active for patient
                 "birth_date": getattr(patient, "birth_date", None),
                 "address": getattr(patient, "address", None),
                 "medical_note": getattr(patient, "medical_note", None)
