@@ -134,7 +134,6 @@ def update_doctor_patient_association(
 
 @router.get("/doctors/{doctor_id}/patients", response_model=List[PatientOut])
 def list_patients_for_doctor(doctor_id: int, db: Session = Depends(get_db)):
-    # Ambil semua relasi doctor-patient yang masih ada
     assocs = db.query(DoctorPatientAssociation).filter_by(doctor_id=doctor_id).all()
     patient_user_ids = [assoc.patient_id for assoc in assocs]
     print(f"[DEBUG] doctor_id: {doctor_id}")
@@ -142,10 +141,20 @@ def list_patients_for_doctor(doctor_id: int, db: Session = Depends(get_db)):
     if not patient_user_ids:
         print("[DEBUG] No patient_user_ids found.")
         return []
-    # Ambil data pasien dari tabel Patient dan join ke User agar field name/email terisi
     patients = db.query(Patient).join(User, Patient.patient_id == User.id).filter(Patient.patient_id.in_(patient_user_ids)).all()
     print(f"[DEBUG] patients found: {[p.id for p in patients]}")
-    return patients
+    # Mapping manual agar name/email diambil dari relasi user
+    result = []
+    for p in patients:
+        result.append({
+            "id": p.id,
+            "name": p.user.name if p.user else None,
+            "email": p.user.email if p.user else None,
+            "birth_date": p.birth_date,
+            "address": p.address,
+            "medical_note": p.medical_note,
+        })
+    return result
 
 @router.delete("/doctors/{doctor_id}/unassign-patient/{patient_id}")
 def unassign_patient_from_doctor(doctor_id: int, patient_id: int, db: Session = Depends(get_db)):
