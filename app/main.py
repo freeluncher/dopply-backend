@@ -17,10 +17,10 @@ app = FastAPI(title="Dopply Backend", version="1.0.0")
 
 # Include routers
 app.include_router(user.router, prefix="/api/v1", tags=["User"])
-app.include_router(monitoring.router, prefix="/v1", tags=["monitoring"])
-app.include_router(admin_doctor_validation.router, prefix="/v1/admin", tags=["admin"])
-app.include_router(token_verify.router, prefix="/v1", tags=["auth"])
-app.include_router(patient_list.router, prefix="/v1", tags=["patients"])
+app.include_router(monitoring.router, prefix="/api/v1", tags=["monitoring"])
+app.include_router(admin_doctor_validation.router, prefix="/api/v1/admin", tags=["admin"])
+app.include_router(token_verify.router, prefix="/api/v1", tags=["auth"])
+app.include_router(patient_list.router, prefix="/api/v1", tags=["patients"])
 app.include_router(patient_crud.router, prefix="/api/v1", tags=["Patient CRUD"])
 
 # Middleware (e.g., CORS)
