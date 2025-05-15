@@ -2,6 +2,7 @@ from sqlalchemy import Column, Integer, String, Enum, Date, Text, ForeignKey, Da
 from sqlalchemy.orm import relationship
 from app.db.base import Base
 import enum
+from datetime import datetime
 
 class UserRole(enum.Enum):
     admin = "admin"
@@ -19,13 +20,16 @@ class User(Base):
     records_as_doctor = relationship("Record", back_populates="doctor", foreign_keys='Record.doctor_id')
     records_shared = relationship("Record", back_populates="shared_with_user", foreign_keys='Record.shared_with')
 
-# Relasi many-to-many doctor-patient
-DoctorPatient = Table(
-    "doctor_patient",
-    Base.metadata,
-    Column("doctor_id", Integer, ForeignKey("doctors.doctor_id", ondelete="CASCADE"), primary_key=True),
-    Column("patient_id", Integer, ForeignKey("patients.patient_id", ondelete="CASCADE"), primary_key=True)
-)
+class DoctorPatientAssociation(Base):
+    __tablename__ = "doctor_patient"
+    doctor_id = Column(Integer, ForeignKey("doctors.doctor_id", ondelete="CASCADE"), primary_key=True)
+    patient_id = Column(Integer, ForeignKey("patients.patient_id", ondelete="CASCADE"), primary_key=True)
+    assigned_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    status = Column(String(50), nullable=True)  # contoh: 'active', 'finished', dsb
+    note = Column(Text, nullable=True)  # catatan khusus dokter terhadap pasien
+
+    doctor = relationship("Doctor", back_populates="doctor_patient_associations")
+    patient = relationship("Patient", back_populates="doctor_patient_associations")
 
 class Patient(Base):
     __tablename__ = "patients"
@@ -36,7 +40,8 @@ class Patient(Base):
     medical_note = Column(Text, nullable=True)
     user = relationship("User", back_populates="patients")
     records = relationship("Record", back_populates="patient")
-    doctors = relationship("Doctor", secondary=DoctorPatient, back_populates="patients")
+    doctor_patient_associations = relationship("DoctorPatientAssociation", back_populates="patient")
+    doctors = relationship("Doctor", secondary="doctor_patient", back_populates="patients", viewonly=True)
 
 class RecordSource(enum.Enum):
     clinic = "clinic"
@@ -80,4 +85,5 @@ class Doctor(Base):
     doctor_id = Column(Integer, ForeignKey("users.id"), nullable=False, unique=True)  # ubah dari user_id ke doctor_id
     is_valid = Column(Boolean, default=False, nullable=False)
     user = relationship("User")
-    patients = relationship("Patient", secondary=DoctorPatient, back_populates="doctors")
+    doctor_patient_associations = relationship("DoctorPatientAssociation", back_populates="doctor")
+    patients = relationship("Patient", secondary="doctor_patient", back_populates="doctors", viewonly=True)
