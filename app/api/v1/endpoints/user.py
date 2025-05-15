@@ -55,14 +55,14 @@ def login_user(user: LoginRequest, db: Session = Depends(get_db)):
 def register_user(user: UserRegister, db: Session = Depends(get_db)):
     try:
         created_user = register_user_universal(db, user)
-        if created_user.role == "doctor":
+        role_value = created_user.role.value if hasattr(created_user.role, 'value') else str(created_user.role)
+        if role_value == "doctor":
             doctor = db.query(Doctor).filter(Doctor.doctor_id == created_user.id).first()
             return JSONResponse(status_code=201, content={
                 "id": created_user.id,
                 "name": created_user.name,
                 "email": created_user.email,
-                "role": created_user.role,
-                # Remove is_active, only return is_valid for doctor
+                "role": role_value,
                 "is_valid": getattr(doctor, "is_valid", False)
             })
         else:
@@ -71,7 +71,7 @@ def register_user(user: UserRegister, db: Session = Depends(get_db)):
                 "id": created_user.id,
                 "name": created_user.name,
                 "email": created_user.email,
-                "role": created_user.role,
+                "role": role_value,
                 "birth_date": getattr(patient, "birth_date", None),
                 "address": getattr(patient, "address", None),
                 "medical_note": getattr(patient, "medical_note", None)
