@@ -142,12 +142,12 @@ def list_patients_for_doctor(doctor_id: int, db: Session = Depends(get_db)):
         print("[DEBUG] No patient_user_ids found.")
         return []
     patients = db.query(Patient).join(User, Patient.patient_id == User.id).filter(Patient.patient_id.in_(patient_user_ids)).all()
-    print(f"[DEBUG] patients found: {[p.id for p in patients]}")
-    # Mapping manual agar name/email diambil dari relasi user
+    print(f"[DEBUG] patients found: {[p.patient_id for p in patients]}")
+    # Mapping manual agar name/email diambil dari relasi user dan patient_id (FK ke users.id) dikembalikan
     result = []
     for p in patients:
         result.append({
-            "id": p.id,
+            "patient_id": p.patient_id,  # FK ke users.id
             "name": p.user.name if p.user else None,
             "email": p.user.email if p.user else None,
             "birth_date": p.birth_date,
