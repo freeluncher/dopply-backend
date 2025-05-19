@@ -136,8 +136,12 @@ class MonitoringRecordRequest(BaseModel):
 
 @router.post("/monitoring_record", status_code=201)
 def save_monitoring_record(req: MonitoringRecordRequest, db: Session = Depends(get_db)):
+    import logging
+    logger = logging.getLogger("uvicorn")
+    logger.info(f"[MONITORING_RECORD] patient_id={req.patient_id}, doctor_id={req.doctor_id}, start_time={req.start_time}, end_time={req.end_time}, bpm_data={req.bpm_data}, result={req.result}, classification={req.classification}, doctor_note={req.doctor_note}")
     patient = db.query(Patient).filter(Patient.id == req.patient_id).first()
     if not patient:
+        logger.warning(f"[MONITORING_RECORD] Patient not found: {req.patient_id}")
         raise HTTPException(status_code=404, detail="Patient not found")
     # Simpan data sebagai JSON
     record = Record(
@@ -153,4 +157,5 @@ def save_monitoring_record(req: MonitoringRecordRequest, db: Session = Depends(g
     db.add(record)
     db.commit()
     db.refresh(record)
+    logger.info(f"[MONITORING_RECORD] Record saved: id={record.id}")
     return {"status": "success", "record_id": record.id}
