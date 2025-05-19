@@ -139,13 +139,13 @@ def save_monitoring_record(req: MonitoringRecordRequest, db: Session = Depends(g
     import logging
     logger = logging.getLogger("uvicorn")
     logger.info(f"[MONITORING_RECORD] patient_id={req.patient_id}, doctor_id={req.doctor_id}, start_time={req.start_time}, end_time={req.end_time}, bpm_data={req.bpm_data}, result={req.result}, classification={req.classification}, doctor_note={req.doctor_note}")
-    patient = db.query(Patient).filter(Patient.id == req.patient_id).first()
+    # Perbaiki: cari berdasarkan patient_id (FK ke users.id)
+    patient = db.query(Patient).filter(Patient.patient_id == req.patient_id).first()
     if not patient:
         logger.warning(f"[MONITORING_RECORD] Patient not found: {req.patient_id}")
         raise HTTPException(status_code=404, detail="Patient not found")
-    # Simpan data sebagai JSON
     record = Record(
-        patient_id=req.patient_id,
+        patient_id=patient.id,  # Simpan PK patients.id ke records.patient_id
         doctor_id=req.doctor_id,
         source="clinic",  # atau sesuai kebutuhan
         bpm_data=[{"time": d.time, "bpm": d.bpm} for d in req.bpm_data],
