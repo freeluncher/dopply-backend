@@ -88,3 +88,69 @@ def send_monitoring_result(
         end_time=end_time,
         record_id=new_record.id
     )
+
+# --- Klasifikasi BPM ---
+class BPMDataPoint(BaseModel):
+    time: int
+    bpm: int
+
+class ClassifyBPMRequest(BaseModel):
+    bpm_data: List[BPMDataPoint]
+
+class ClassifyBPMResponse(BaseModel):
+    result: str
+    classification: str
+
+@router.post("/classify_bpm", response_model=ClassifyBPMResponse)
+def classify_bpm(req: ClassifyBPMRequest):
+    bpm_values = [point.bpm for point in req.bpm_data]
+    if not bpm_values:
+        raise HTTPException(status_code=400, detail="bpm_data required")
+    avg_bpm = sum(bpm_values) / len(bpm_values)
+    if avg_bpm < 60:
+        result = "pathologic"
+        classification = "bradikardia"
+    elif avg_bpm > 100:
+        result = "pathologic"
+        classification = "takikardia"
+    else:
+        result = "normal"
+        classification = "normal"
+    # Bisa tambahkan logika lain (suspect, dst) sesuai kebutuhan
+    return {"result": result, "classification": classification}
+
+# --- Simpan Riwayat Monitoring ---
+class MonitoringRecordBPMData(BaseModel):
+    time: int
+    bpm: int
+
+class MonitoringRecordRequest(BaseModel):
+    patient_id: int
+    doctor_id: int
+    start_time: datetime
+    end_time: datetime
+    bpm_data: List[MonitoringRecordBPMData]
+    result: str
+    classification: str
+    doctor_note: Optional[str] = None
+
+@router.post("/monitoring_record", status_code=201)
+def save_monitoring_record(req: MonitoringRecordRequest, db: Session = Depends(get_db)):
+    patient = db.query(Patient).filter(Patient.id == req.patient_id).first()
+    if not patient:
+        raise HTTPException(status_code=404, detail="Patient not found")
+    # Simpan data sebagai JSON
+    record = Record(
+        patient_id=req.patient_id,
+        doctor_id=req.doctor_id,
+        source="clinic",  # atau sesuai kebutuhan
+        bpm_data=[{"time": d.time, "bpm": d.bpm} for d in req.bpm_data],
+        start_time=req.start_time,
+        end_time=req.end_time,
+        classification=req.classification,
+        notes=req.doctor_note,
+    )
+    db.add(record)
+    db.commit()
+    db.refresh(record)
+    return {"status": "success", "record_id": record.id}
