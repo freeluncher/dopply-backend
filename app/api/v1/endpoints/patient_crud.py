@@ -7,6 +7,7 @@ from app.models.medical import Doctor, Patient, User, DoctorPatientAssociation
 from typing import List, Optional
 from datetime import datetime
 from pydantic import BaseModel
+from app.services.doctor_patient_service import DoctorPatientService
 
 router = APIRouter()
 
@@ -68,24 +69,20 @@ def assign_patient_to_doctor(
     data: DoctorPatientAssociationIn = None,
     db: Session = Depends(get_db)
 ):
-    doctor = db.query(Doctor).filter(Doctor.doctor_id == doctor_id).first()
-    patient = db.query(Patient).filter(Patient.patient_id == patient_id).first()
-    if not doctor or not patient:
-        raise HTTPException(status_code=404, detail="Doctor or patient not found")
-    assoc = db.query(DoctorPatientAssociation).filter_by(doctor_id=doctor_id, patient_id=patient_id).first()
-    if assoc:
-        raise HTTPException(status_code=400, detail="Patient already assigned to doctor")
-    assoc = DoctorPatientAssociation(
-        doctor_id=doctor_id,
-        patient_id=patient_id,
-        assigned_at=datetime.utcnow(),
-        status=data.status if data else None,
-        note=data.note if data else None
-    )
-    db.add(assoc)
-    db.commit()
-    db.refresh(assoc)
-    return assoc
+    try:
+        assoc = DoctorPatientService.assign_patient_to_doctor(
+            db, doctor_id, patient_id,
+            status=data.status if data else None,
+            note=data.note if data else None
+        )
+        return assoc
+    except ValueError as e:
+        msg = str(e)
+        if "not found" in msg:
+            raise HTTPException(status_code=404, detail=msg)
+        if "already assigned" in msg:
+            raise HTTPException(status_code=400, detail=msg)
+        raise HTTPException(status_code=400, detail=msg)
 
 @router.post("/doctors/{doctor_id}/assign-patient-by-email", response_model=DoctorPatientAssociationOut)
 def assign_patient_to_doctor_by_email(
@@ -93,26 +90,18 @@ def assign_patient_to_doctor_by_email(
     data: AssignPatientByEmailIn,
     db: Session = Depends(get_db)
 ):
-    doctor = db.query(Doctor).filter(Doctor.doctor_id == doctor_id).first()
-    if not doctor:
-        raise HTTPException(status_code=404, detail="Doctor not found")
-    patient = db.query(Patient).join(User).filter(User.email == data.email).first()
-    if not patient:
-        raise HTTPException(status_code=404, detail="Patient with this email not found")
-    assoc = db.query(DoctorPatientAssociation).filter_by(doctor_id=doctor_id, patient_id=patient.patient_id).first()
-    if assoc:
-        raise HTTPException(status_code=400, detail="Patient already assigned to doctor")
-    assoc = DoctorPatientAssociation(
-        doctor_id=doctor_id,
-        patient_id=patient.patient_id,
-        assigned_at=datetime.utcnow(),
-        status=data.status,
-        note=data.note
-    )
-    db.add(assoc)
-    db.commit()
-    db.refresh(assoc)
-    return assoc
+    try:
+        assoc = DoctorPatientService.assign_patient_to_doctor_by_email(
+            db, doctor_id, data.email, status=data.status, note=data.note
+        )
+        return assoc
+    except ValueError as e:
+        msg = str(e)
+        if "not found" in msg:
+            raise HTTPException(status_code=404, detail=msg)
+        if "already assigned" in msg:
+            raise HTTPException(status_code=400, detail=msg)
+        raise HTTPException(status_code=400, detail=msg)
 
 @router.patch("/doctors/{doctor_id}/patients/{patient_id}", response_model=DoctorPatientAssociationOut)
 def update_doctor_patient_association(
@@ -121,46 +110,28 @@ def update_doctor_patient_association(
     data: DoctorPatientAssociationIn,
     db: Session = Depends(get_db)
 ):
-    assoc = db.query(DoctorPatientAssociation).filter_by(doctor_id=doctor_id, patient_id=patient_id).first()
-    if not assoc:
-        raise HTTPException(status_code=404, detail="Relation not found")
-    if data.status is not None:
-        assoc.status = data.status
-    if data.note is not None:
-        assoc.note = data.note
-    db.commit()
-    db.refresh(assoc)
-    return assoc
+    try:
+        assoc = DoctorPatientService.update_doctor_patient_association(
+            db, doctor_id, patient_id, status=data.status, note=data.note
+        )
+        return assoc
+    except ValueError as e:
+        msg = str(e)
+        if "not found" in msg:
+            raise HTTPException(status_code=404, detail=msg)
+        raise HTTPException(status_code=400, detail=msg)
 
 @router.get("/doctors/{doctor_id}/patients", response_model=List[PatientOut])
 def list_patients_for_doctor(doctor_id: int, db: Session = Depends(get_db)):
-    assocs = db.query(DoctorPatientAssociation).filter_by(doctor_id=doctor_id).all()
-    patient_user_ids = [assoc.patient_id for assoc in assocs]
-    print(f"[DEBUG] doctor_id: {doctor_id}")
-    print(f"[DEBUG] patient_user_ids: {patient_user_ids}")
-    if not patient_user_ids:
-        print("[DEBUG] No patient_user_ids found.")
-        return []
-    patients = db.query(Patient).join(User, Patient.patient_id == User.id).filter(Patient.patient_id.in_(patient_user_ids)).all()
-    print(f"[DEBUG] patients found: {[p.patient_id for p in patients]}")
-    result = []
-    for p in patients:
-        result.append({
-            "id": p.patient_id,  # required by PatientOut schema
-            "patient_id": p.patient_id,  # for frontend mapping
-            "name": p.user.name if p.user else None,
-            "email": p.user.email if p.user else None,
-            "birth_date": p.birth_date,
-            "address": p.address,
-            "medical_note": p.medical_note,
-        })
-    return result
+    return DoctorPatientService.list_patients_for_doctor(db, doctor_id)
 
 @router.delete("/doctors/{doctor_id}/unassign-patient/{patient_id}")
 def unassign_patient_from_doctor(doctor_id: int, patient_id: int, db: Session = Depends(get_db)):
-    assoc = db.query(DoctorPatientAssociation).filter_by(doctor_id=doctor_id, patient_id=patient_id).first()
-    if not assoc:
-        raise HTTPException(status_code=404, detail="Relation not found")
-    db.delete(assoc)
-    db.commit()
-    return {"message": "Patient unassigned from doctor"}
+    try:
+        DoctorPatientService.unassign_patient_from_doctor(db, doctor_id, patient_id)
+        return {"message": "Patient unassigned from doctor"}
+    except ValueError as e:
+        msg = str(e)
+        if "not found" in msg:
+            raise HTTPException(status_code=404, detail=msg)
+        raise HTTPException(status_code=400, detail=msg)

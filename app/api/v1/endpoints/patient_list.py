@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from app.db.session import SessionLocal
 from app.models.medical import Record, Patient, User
 from app.core.security import verify_jwt_token
+from app.services.patient_list_service import PatientListService
 from typing import List, Optional
 
 router = APIRouter()
@@ -33,25 +34,4 @@ def get_patients_by_doctor(
     db: Session = Depends(get_db),
     doctor_id: int = Depends(get_current_doctor_id)
 ):
-    # Ambil semua patient_id dari records yang pernah ditangani dokter ini
-    patient_ids = db.query(Record.patient_id).filter(Record.doctor_id == doctor_id).distinct().all()
-    patient_ids = [pid[0] for pid in patient_ids]
-    if not patient_ids:
-        return []
-    # Query pasien
-    query = db.query(Patient).filter(Patient.id.in_(patient_ids))
-    if search:
-        query = query.join(User, Patient.patient_id == User.id).filter(User.name.ilike(f"%{search}%"))
-    patients = query.all()
-    result = []
-    for patient in patients:
-        user = db.query(User).filter(User.id == patient.patient_id).first()
-        result.append({
-            "patient_id": patient.id,
-            "name": user.name if user else None,
-            "email": user.email if user else None,
-            "address": patient.address,
-            "birth_date": patient.birth_date,
-            "medical_note": patient.medical_note
-        })
-    return result
+    return PatientListService.get_patients_by_doctor(db, doctor_id, search)
