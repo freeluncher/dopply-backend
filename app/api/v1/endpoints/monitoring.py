@@ -7,6 +7,8 @@ from app.models.medical import Record, Patient, User
 from datetime import datetime
 from sqlalchemy import desc
 from app.services.monitoring_service import MonitoringService
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from app.core.security import verify_jwt_token
 
 router = APIRouter()
 
@@ -126,3 +128,39 @@ def save_patient_monitoring_result(req: PatientMonitoringRequest, db: Session = 
     db.commit()
     db.refresh(record)
     return {"message": "Monitoring result saved", "record_id": record.id}
+
+class PatientMonitoringHistoryItem(BaseModel):
+    created_at: datetime
+    monitoring_result: Optional[str] = None
+    classification: Optional[str] = None
+    bpm_data: list[dict]
+
+security = HTTPBearer()
+
+def get_current_patient(credentials: HTTPAuthorizationCredentials = Depends(security), db: Session = Depends(get_db)):
+    token = credentials.credentials
+    try:
+        payload = verify_jwt_token(token)
+    except Exception:
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
+    user = db.query(User).filter(User.email == payload["sub"]).first()
+    if not user or (hasattr(user.role, 'value') and user.role.value != "patient") and (str(user.role) != "patient"):
+        raise HTTPException(status_code=403, detail="Patient access required")
+    return user
+
+@router.get("/patient/monitoring/history", response_model=List[PatientMonitoringHistoryItem])
+def get_patient_monitoring_history(db: Session = Depends(get_db), current_user: User = Depends(get_current_patient)):
+    # Ambil semua record monitoring milik pasien login
+    patient = db.query(Patient).filter(Patient.patient_id == current_user.id).first()
+    if not patient:
+        raise HTTPException(status_code=404, detail="Patient not found")
+    records = db.query(Record).filter(Record.patient_id == patient.id).order_by(Record.id.desc()).all()
+    result = []
+    for r in records:
+        result.append(PatientMonitoringHistoryItem(
+            created_at=getattr(r, "created_at", getattr(r, "start_time", None)),
+            monitoring_result=getattr(r, "notes", None),
+            classification=getattr(r, "classification", None),
+            bpm_data=getattr(r, "bpm_data", [])
+        ))
+    return result
