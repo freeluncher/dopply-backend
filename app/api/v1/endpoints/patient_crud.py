@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Security
 from sqlalchemy.orm import Session
 from app.schemas.patient import PatientCreate, PatientUpdate, PatientOut
 from app.services.patient_service import get_patients, get_patient, update_patient, delete_patient, register_user_universal
@@ -214,35 +214,107 @@ def assign_patient_to_doctor_body(
             raise HTTPException(status_code=400, detail=msg)
         raise HTTPException(status_code=400, detail=msg)
 
-@router.patch("/patient/account/email")
-def change_patient_email(
-    req: ChangeEmailRequest,
-    db: Session = Depends(get_db),
-    patient_id: int = Depends(get_current_patient_id)
-):
-    user = db.query(User).filter(User.id == patient_id).first()
+# --- Account Management Endpoints for All Roles ---
+
+class ChangeEmailOnlyRequest(BaseModel):
+    email: str
+
+class ChangePasswordOnlyRequest(BaseModel):
+    old_password: str
+    new_password: str
+
+def get_current_user_role(credentials: HTTPAuthorizationCredentials = Security(security), db: Session = Depends(get_db)):
+    token = credentials.credentials
+    payload = verify_jwt_token(token)
+    user = db.query(User).filter(User.email == payload["sub"]).first()
     if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    if not verify_password(req.current_password, user.password_hash):
-        raise HTTPException(status_code=400, detail="Current password is incorrect")
-    # Check if new email is already used
-    if db.query(User).filter(User.email == req.new_email).first():
-        raise HTTPException(status_code=400, detail="Email already in use")
-    user.email = req.new_email
+        raise HTTPException(status_code=401, detail="User not found")
+    return user
+
+@router.patch("/patient/account/email")
+def patient_change_email(
+    req: ChangeEmailOnlyRequest,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user_role)
+):
+    if (hasattr(user.role, 'value') and user.role.value != "patient") and (str(user.role) != "patient"):
+        raise HTTPException(status_code=403, detail="Patient access required")
+    if db.query(User).filter(User.email == req.email).first():
+        raise HTTPException(status_code=409, detail="Email already in use")
+    user.email = req.email
     db.commit()
     db.refresh(user)
     return {"message": "Email updated successfully"}
 
 @router.patch("/patient/account/password")
-def change_patient_password(
-    req: ChangePasswordRequest,
+def patient_change_password(
+    req: ChangePasswordOnlyRequest,
     db: Session = Depends(get_db),
-    patient_id: int = Depends(get_current_patient_id)
+    user: User = Depends(get_current_user_role)
 ):
-    user = db.query(User).filter(User.id == patient_id).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    if not verify_password(req.current_password, user.password_hash):
+    if (hasattr(user.role, 'value') and user.role.value != "patient") and (str(user.role) != "patient"):
+        raise HTTPException(status_code=403, detail="Patient access required")
+    if not verify_password(req.old_password, user.password_hash):
+        raise HTTPException(status_code=400, detail="Current password is incorrect")
+    user.password_hash = get_password_hash(req.new_password)
+    db.commit()
+    db.refresh(user)
+    return {"message": "Password updated successfully"}
+
+@router.patch("/doctor/account/email")
+def doctor_change_email(
+    req: ChangeEmailOnlyRequest,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user_role)
+):
+    if (hasattr(user.role, 'value') and user.role.value != "doctor") and (str(user.role) != "doctor"):
+        raise HTTPException(status_code=403, detail="Doctor access required")
+    if db.query(User).filter(User.email == req.email).first():
+        raise HTTPException(status_code=409, detail="Email already in use")
+    user.email = req.email
+    db.commit()
+    db.refresh(user)
+    return {"message": "Email updated successfully"}
+
+@router.patch("/doctor/account/password")
+def doctor_change_password(
+    req: ChangePasswordOnlyRequest,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user_role)
+):
+    if (hasattr(user.role, 'value') and user.role.value != "doctor") and (str(user.role) != "doctor"):
+        raise HTTPException(status_code=403, detail="Doctor access required")
+    if not verify_password(req.old_password, user.password_hash):
+        raise HTTPException(status_code=400, detail="Current password is incorrect")
+    user.password_hash = get_password_hash(req.new_password)
+    db.commit()
+    db.refresh(user)
+    return {"message": "Password updated successfully"}
+
+@router.patch("/admin/account/email")
+def admin_change_email(
+    req: ChangeEmailOnlyRequest,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user_role)
+):
+    if (hasattr(user.role, 'value') and user.role.value != "admin") and (str(user.role) != "admin"):
+        raise HTTPException(status_code=403, detail="Admin access required")
+    if db.query(User).filter(User.email == req.email).first():
+        raise HTTPException(status_code=409, detail="Email already in use")
+    user.email = req.email
+    db.commit()
+    db.refresh(user)
+    return {"message": "Email updated successfully"}
+
+@router.patch("/admin/account/password")
+def admin_change_password(
+    req: ChangePasswordOnlyRequest,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user_role)
+):
+    if (hasattr(user.role, 'value') and user.role.value != "admin") and (str(user.role) != "admin"):
+        raise HTTPException(status_code=403, detail="Admin access required")
+    if not verify_password(req.old_password, user.password_hash):
         raise HTTPException(status_code=400, detail="Current password is incorrect")
     user.password_hash = get_password_hash(req.new_password)
     db.commit()
