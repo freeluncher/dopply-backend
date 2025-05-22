@@ -8,8 +8,12 @@ from typing import List, Optional
 from datetime import datetime
 from pydantic import BaseModel
 from app.services.doctor_patient_service import DoctorPatientService
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from app.core.security import verify_jwt_token, verify_password, get_password_hash
 
 router = APIRouter()
+
+security = HTTPBearer()
 
 def get_db():
     db = SessionLocal()
@@ -17,6 +21,15 @@ def get_db():
         yield db
     finally:
         db.close()
+
+def get_current_patient_id(credentials: HTTPAuthorizationCredentials = Depends(security), db: Session = Depends(get_db)):
+    token = credentials.credentials
+    payload = verify_jwt_token(token)
+    # sub is email, not user_id
+    user = db.query(User).filter(User.email == payload["sub"]).first()
+    if not user or (hasattr(user.role, 'value') and user.role.value != "patient") and (str(user.role) != "patient"):
+        raise HTTPException(status_code=403, detail="Patient access required")
+    return user.id
 
 class DoctorPatientAssociationIn(BaseModel):
     status: Optional[str] = None
@@ -36,6 +49,14 @@ class AssignPatientByEmailIn(BaseModel):
     email: str
     status: Optional[str] = None
     note: Optional[str] = None
+
+class ChangeEmailRequest(BaseModel):
+    new_email: str
+    current_password: str
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str
 
 @router.get("/patients", response_model=List[PatientOut])
 def read_patients(db: Session = Depends(get_db)):
@@ -192,3 +213,38 @@ def assign_patient_to_doctor_body(
         if "already assigned" in msg:
             raise HTTPException(status_code=400, detail=msg)
         raise HTTPException(status_code=400, detail=msg)
+
+@router.patch("/patient/account/email")
+def change_patient_email(
+    req: ChangeEmailRequest,
+    db: Session = Depends(get_db),
+    patient_id: int = Depends(get_current_patient_id)
+):
+    user = db.query(User).filter(User.id == patient_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    if not verify_password(req.current_password, user.password_hash):
+        raise HTTPException(status_code=400, detail="Current password is incorrect")
+    # Check if new email is already used
+    if db.query(User).filter(User.email == req.new_email).first():
+        raise HTTPException(status_code=400, detail="Email already in use")
+    user.email = req.new_email
+    db.commit()
+    db.refresh(user)
+    return {"message": "Email updated successfully"}
+
+@router.patch("/patient/account/password")
+def change_patient_password(
+    req: ChangePasswordRequest,
+    db: Session = Depends(get_db),
+    patient_id: int = Depends(get_current_patient_id)
+):
+    user = db.query(User).filter(User.id == patient_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    if not verify_password(req.current_password, user.password_hash):
+        raise HTTPException(status_code=400, detail="Current password is incorrect")
+    user.password_hash = get_password_hash(req.new_password)
+    db.commit()
+    db.refresh(user)
+    return {"message": "Password updated successfully"}
