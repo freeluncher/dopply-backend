@@ -473,3 +473,63 @@ def delete_user(id: int, db: Session = Depends(get_db), user: User = Depends(get
     db.delete(user_obj)
     db.commit()
     return {"message": "User deleted successfully"}
+
+@router.get("/admin/users")
+def get_admin_users(db: Session = Depends(get_db), user: User = Depends(get_current_user_role)):
+    if (hasattr(user.role, 'value') and user.role.value != "admin") and (str(user.role) != "admin"):
+        return JSONResponse(status_code=403, content={"error": "Admin access required"})
+    users = db.query(User).all()
+    return [{"id": u.id, "name": u.name, "email": u.email, "role": u.role.value if hasattr(u.role, 'value') else str(u.role)} for u in users]
+
+@router.post("/admin/users")
+async def create_admin_user(request: Request, db: Session = Depends(get_db), user: User = Depends(get_current_user_role)):
+    if (hasattr(user.role, 'value') and user.role.value != "admin") and (str(user.role) != "admin"):
+        return JSONResponse(status_code=403, content={"error": "Admin access required"})
+    body = await request.json()
+    name = body.get("name")
+    email = body.get("email")
+    role = body.get("role")
+    if not name or not email or not role:
+        return JSONResponse(status_code=400, content={"error": "name, email, and role are required"})
+    if db.query(User).filter(User.email == email).first():
+        return JSONResponse(status_code=409, content={"error": "Email already in use"})
+    from app.core.security import get_password_hash
+    user_obj = User(name=name, email=email, password_hash=get_password_hash("default123"), role=role)
+    db.add(user_obj)
+    db.commit()
+    db.refresh(user_obj)
+    return {"id": user_obj.id, "message": "User created successfully"}
+
+@router.put("/admin/users/{id}")
+async def update_admin_user(id: int, request: Request, db: Session = Depends(get_db), user: User = Depends(get_current_user_role)):
+    if (hasattr(user.role, 'value') and user.role.value != "admin") and (str(user.role) != "admin"):
+        return JSONResponse(status_code=403, content={"error": "Admin access required"})
+    body = await request.json()
+    name = body.get("name")
+    email = body.get("email")
+    role = body.get("role")
+    user_obj = db.query(User).filter(User.id == id).first()
+    if not user_obj:
+        return JSONResponse(status_code=404, content={"error": "User not found"})
+    if email and email != user_obj.email and db.query(User).filter(User.email == email).first():
+        return JSONResponse(status_code=409, content={"error": "Email already in use"})
+    if name:
+        user_obj.name = name
+    if email:
+        user_obj.email = email
+    if role:
+        user_obj.role = role
+    db.commit()
+    db.refresh(user_obj)
+    return {"message": "User updated successfully"}
+
+@router.delete("/admin/users/{id}")
+def delete_admin_user(id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user_role)):
+    if (hasattr(user.role, 'value') and user.role.value != "admin") and (str(user.role) != "admin"):
+        return JSONResponse(status_code=403, content={"error": "Admin access required"})
+    user_obj = db.query(User).filter(User.id == id).first()
+    if not user_obj:
+        return JSONResponse(status_code=404, content={"error": "User not found"})
+    db.delete(user_obj)
+    db.commit()
+    return {"message": "User deleted successfully"}
