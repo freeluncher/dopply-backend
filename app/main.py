@@ -18,8 +18,8 @@ import json
 from fastapi.exceptions import RequestValidationError
 from pydantic import ValidationError
 from sqlalchemy.exc import IntegrityError
-from starlette.exceptions import MethodNotAllowed, HTTPException as StarletteHTTPException
-from starlette.status import HTTP_405_METHOD_NOT_ALLOWED, HTTP_408_REQUEST_TIMEOUT, HTTP_429_TOO_MANY_REQUESTS, HTTP_502_BAD_GATEWAY, HTTP_503_SERVICE_UNAVAILABLE, HTTP_504_GATEWAY_TIMEOUT
+from starlette.exceptions import HTTPException as StarletteHTTPException
+from starlette.status import HTTP_408_REQUEST_TIMEOUT, HTTP_429_TOO_MANY_REQUESTS, HTTP_502_BAD_GATEWAY, HTTP_503_SERVICE_UNAVAILABLE, HTTP_504_GATEWAY_TIMEOUT
 
 # Create all tables
 Base.metadata.create_all(bind=engine)
@@ -191,21 +191,6 @@ async def sqlalchemy_integrity_exception_handler(request: Request, exc: Integrit
             "message": "Database integrity error",
             "error_type": "IntegrityError",
             "detail": str(exc.orig) if hasattr(exc, 'orig') else str(exc)
-        },
-    )
-
-@app.exception_handler(MethodNotAllowed)
-async def method_not_allowed_handler(request: Request, exc: MethodNotAllowed):
-    logger.warning(f"MethodNotAllowed: {request.method} {request.url}")
-    return JSONResponse(
-        status_code=HTTP_405_METHOD_NOT_ALLOWED,
-        content={
-            "status": "error",
-            "code": HTTP_405_METHOD_NOT_ALLOWED,
-            "error_code": "method_not_allowed",
-            "message": "Method not allowed",
-            "error_type": "MethodNotAllowed",
-            "detail": None
         },
     )
 
