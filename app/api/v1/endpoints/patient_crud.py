@@ -10,6 +10,9 @@ from pydantic import BaseModel
 from app.services.doctor_patient_service import DoctorPatientService
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from app.core.security import verify_jwt_token, verify_password, get_password_hash
+from fastapi import Request
+from fastapi.responses import JSONResponse
+from fastapi import status
 
 router = APIRouter()
 
@@ -57,6 +60,152 @@ class ChangeEmailRequest(BaseModel):
 class ChangePasswordRequest(BaseModel):
     current_password: str
     new_password: str
+
+class UserOut(BaseModel):
+    id: int
+    name: str
+    email: str
+    role: str
+    class Config:
+        orm_mode = True
+
+class UserCreateRequest(BaseModel):
+    name: str
+    email: str
+    role: str
+
+class UserUpdateRequest(BaseModel):
+    name: str
+    email: str
+    role: str
+
+class ChangeEmailUnifiedRequest(BaseModel):
+    newEmail: str
+
+class ChangePasswordUnifiedRequest(BaseModel):
+    oldPassword: str
+    newPassword: str
+
+# --- Unified Account Endpoints ---
+from sqlalchemy.exc import IntegrityError
+
+@router.put("/account/email")
+def change_email_unified(
+    req: ChangeEmailUnifiedRequest,
+    db: Session = Depends(get_db),
+    credentials: HTTPAuthorizationCredentials = Security(security)
+):
+    token = credentials.credentials
+    payload = verify_jwt_token(token)
+    user = db.query(User).filter(User.email == payload["sub"]).first()
+    if not user:
+        raise HTTPException(status_code=401, detail={"error": "User not found"})
+    if db.query(User).filter(User.email == req.newEmail).first():
+        raise HTTPException(status_code=409, detail={"error": "Email already in use"})
+    user.email = req.newEmail
+    try:
+        db.commit()
+        db.refresh(user)
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=409, detail={"error": "Email already in use"})
+    return {"message": "Email updated successfully"}
+
+@router.put("/account/password")
+def change_password_unified(
+    req: ChangePasswordUnifiedRequest,
+    db: Session = Depends(get_db),
+    credentials: HTTPAuthorizationCredentials = Security(security)
+):
+    token = credentials.credentials
+    payload = verify_jwt_token(token)
+    user = db.query(User).filter(User.email == payload["sub"]).first()
+    if not user:
+        raise HTTPException(status_code=401, detail={"error": "User not found"})
+    if not verify_password(req.oldPassword, user.password_hash):
+        raise HTTPException(status_code=400, detail={"error": "Current password is incorrect"})
+    user.password_hash = get_password_hash(req.newPassword)
+    db.commit()
+    db.refresh(user)
+    return {"message": "Password updated successfully"}
+
+# --- Admin User Management Endpoints ---
+
+def require_admin(credentials: HTTPAuthorizationCredentials = Security(security), db: Session = Depends(get_db)):
+    token = credentials.credentials
+    payload = verify_jwt_token(token)
+    user = db.query(User).filter(User.email == payload["sub"]).first()
+    if not user or (hasattr(user.role, 'value') and user.role.value != "admin") and (str(user.role) != "admin"):
+        raise HTTPException(status_code=403, detail={"error": "Admin access required"})
+    return user
+
+@router.get("/users", response_model=List[UserOut])
+def get_users(
+    db: Session = Depends(get_db),
+    admin: User = Depends(require_admin)
+):
+    users = db.query(User).all()
+    return [UserOut(id=u.id, name=u.name, email=u.email, role=str(u.role)) for u in users]
+
+@router.post("/users")
+def create_user(
+    req: UserCreateRequest,
+    db: Session = Depends(get_db),
+    admin: User = Depends(require_admin)
+):
+    if db.query(User).filter(User.email == req.email).first():
+        raise HTTPException(status_code=409, detail={"error": "Email already in use"})
+    from app.models.medical import UserRole
+    user = User(
+        name=req.name,
+        email=req.email,
+        role=UserRole(req.role) if hasattr(UserRole, req.role) else req.role,
+        password_hash=get_password_hash("default123")
+    )
+    db.add(user)
+    try:
+        db.commit()
+        db.refresh(user)
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=409, detail={"error": "Email already in use"})
+    return {"id": user.id, "message": "User created successfully"}
+
+@router.put("/users/{user_id}")
+def update_user(
+    user_id: int,
+    req: UserUpdateRequest,
+    db: Session = Depends(get_db),
+    admin: User = Depends(require_admin)
+):
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail={"error": "User not found"})
+    if db.query(User).filter(User.email == req.email, User.id != user_id).first():
+        raise HTTPException(status_code=409, detail={"error": "Email already in use"})
+    user.name = req.name
+    user.email = req.email
+    user.role = req.role
+    try:
+        db.commit()
+        db.refresh(user)
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=409, detail={"error": "Email already in use"})
+    return {"message": "User updated successfully"}
+
+@router.delete("/users/{user_id}")
+def delete_user(
+    user_id: int,
+    db: Session = Depends(get_db),
+    admin: User = Depends(require_admin)
+):
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail={"error": "User not found"})
+    db.delete(user)
+    db.commit()
+    return {"message": "User deleted successfully"}
 
 @router.get("/patients", response_model=List[PatientOut])
 def read_patients(db: Session = Depends(get_db)):
@@ -231,92 +380,96 @@ def get_current_user_role(credentials: HTTPAuthorizationCredentials = Security(s
         raise HTTPException(status_code=401, detail="User not found")
     return user
 
-@router.patch("/patient/account/email")
-def patient_change_email(
-    req: ChangeEmailOnlyRequest,
-    db: Session = Depends(get_db),
-    user: User = Depends(get_current_user_role)
-):
-    if (hasattr(user.role, 'value') and user.role.value != "patient") and (str(user.role) != "patient"):
-        raise HTTPException(status_code=403, detail="Patient access required")
-    if db.query(User).filter(User.email == req.email).first():
-        raise HTTPException(status_code=409, detail="Email already in use")
-    user.email = req.email
+@router.put("/account/email")
+async def change_account_email(request: Request, db: Session = Depends(get_db), user: User = Depends(get_current_user_role)):
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse(status_code=400, content={"error": "Invalid request body"})
+    new_email = body.get("newEmail")
+    if not new_email:
+        return JSONResponse(status_code=400, content={"error": "newEmail is required"})
+    if db.query(User).filter(User.email == new_email).first():
+        return JSONResponse(status_code=409, content={"error": "Email already in use"})
+    user.email = new_email
     db.commit()
     db.refresh(user)
     return {"message": "Email updated successfully"}
 
-@router.patch("/patient/account/password")
-def patient_change_password(
-    req: ChangePasswordOnlyRequest,
-    db: Session = Depends(get_db),
-    user: User = Depends(get_current_user_role)
-):
-    if (hasattr(user.role, 'value') and user.role.value != "patient") and (str(user.role) != "patient"):
-        raise HTTPException(status_code=403, detail="Patient access required")
-    if not verify_password(req.old_password, user.password_hash):
-        raise HTTPException(status_code=400, detail="Current password is incorrect")
-    user.password_hash = get_password_hash(req.new_password)
+@router.put("/account/password")
+async def change_account_password(request: Request, db: Session = Depends(get_db), user: User = Depends(get_current_user_role)):
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse(status_code=400, content={"error": "Invalid request body"})
+    old_password = body.get("oldPassword")
+    new_password = body.get("newPassword")
+    if not old_password or not new_password:
+        return JSONResponse(status_code=400, content={"error": "Both oldPassword and newPassword are required"})
+    if not verify_password(old_password, user.password_hash):
+        return JSONResponse(status_code=400, content={"error": "Old password is incorrect"})
+    user.password_hash = get_password_hash(new_password)
     db.commit()
     db.refresh(user)
     return {"message": "Password updated successfully"}
 
-@router.patch("/doctor/account/email")
-def doctor_change_email(
-    req: ChangeEmailOnlyRequest,
-    db: Session = Depends(get_db),
-    user: User = Depends(get_current_user_role)
-):
-    if (hasattr(user.role, 'value') and user.role.value != "doctor") and (str(user.role) != "doctor"):
-        raise HTTPException(status_code=403, detail="Doctor access required")
-    if db.query(User).filter(User.email == req.email).first():
-        raise HTTPException(status_code=409, detail="Email already in use")
-    user.email = req.email
-    db.commit()
-    db.refresh(user)
-    return {"message": "Email updated successfully"}
-
-@router.patch("/doctor/account/password")
-def doctor_change_password(
-    req: ChangePasswordOnlyRequest,
-    db: Session = Depends(get_db),
-    user: User = Depends(get_current_user_role)
-):
-    if (hasattr(user.role, 'value') and user.role.value != "doctor") and (str(user.role) != "doctor"):
-        raise HTTPException(status_code=403, detail="Doctor access required")
-    if not verify_password(req.old_password, user.password_hash):
-        raise HTTPException(status_code=400, detail="Current password is incorrect")
-    user.password_hash = get_password_hash(req.new_password)
-    db.commit()
-    db.refresh(user)
-    return {"message": "Password updated successfully"}
-
-@router.patch("/admin/account/email")
-def admin_change_email(
-    req: ChangeEmailOnlyRequest,
-    db: Session = Depends(get_db),
-    user: User = Depends(get_current_user_role)
-):
+# --- User Management Endpoints (Admin Only) ---
+@router.get("/users")
+def get_users(db: Session = Depends(get_db), user: User = Depends(get_current_user_role)):
     if (hasattr(user.role, 'value') and user.role.value != "admin") and (str(user.role) != "admin"):
-        raise HTTPException(status_code=403, detail="Admin access required")
-    if db.query(User).filter(User.email == req.email).first():
-        raise HTTPException(status_code=409, detail="Email already in use")
-    user.email = req.email
-    db.commit()
-    db.refresh(user)
-    return {"message": "Email updated successfully"}
+        return JSONResponse(status_code=403, content={"error": "Admin access required"})
+    users = db.query(User).all()
+    return [{"id": u.id, "name": u.name, "email": u.email, "role": u.role.value if hasattr(u.role, 'value') else str(u.role)} for u in users]
 
-@router.patch("/admin/account/password")
-def admin_change_password(
-    req: ChangePasswordOnlyRequest,
-    db: Session = Depends(get_db),
-    user: User = Depends(get_current_user_role)
-):
+@router.post("/users")
+async def create_user(request: Request, db: Session = Depends(get_db), user: User = Depends(get_current_user_role)):
     if (hasattr(user.role, 'value') and user.role.value != "admin") and (str(user.role) != "admin"):
-        raise HTTPException(status_code=403, detail="Admin access required")
-    if not verify_password(req.old_password, user.password_hash):
-        raise HTTPException(status_code=400, detail="Current password is incorrect")
-    user.password_hash = get_password_hash(req.new_password)
+        return JSONResponse(status_code=403, content={"error": "Admin access required"})
+    body = await request.json()
+    name = body.get("name")
+    email = body.get("email")
+    role = body.get("role")
+    if not name or not email or not role:
+        return JSONResponse(status_code=400, content={"error": "name, email, and role are required"})
+    if db.query(User).filter(User.email == email).first():
+        return JSONResponse(status_code=409, content={"error": "Email already in use"})
+    from app.core.security import get_password_hash
+    user_obj = User(name=name, email=email, password_hash=get_password_hash("default123"), role=role)
+    db.add(user_obj)
     db.commit()
-    db.refresh(user)
-    return {"message": "Password updated successfully"}
+    db.refresh(user_obj)
+    return {"id": user_obj.id, "message": "User created successfully"}
+
+@router.put("/users/{id}")
+async def update_user(id: int, request: Request, db: Session = Depends(get_db), user: User = Depends(get_current_user_role)):
+    if (hasattr(user.role, 'value') and user.role.value != "admin") and (str(user.role) != "admin"):
+        return JSONResponse(status_code=403, content={"error": "Admin access required"})
+    body = await request.json()
+    name = body.get("name")
+    email = body.get("email")
+    role = body.get("role")
+    user_obj = db.query(User).filter(User.id == id).first()
+    if not user_obj:
+        return JSONResponse(status_code=404, content={"error": "User not found"})
+    if email and email != user_obj.email and db.query(User).filter(User.email == email).first():
+        return JSONResponse(status_code=409, content={"error": "Email already in use"})
+    if name:
+        user_obj.name = name
+    if email:
+        user_obj.email = email
+    if role:
+        user_obj.role = role
+    db.commit()
+    db.refresh(user_obj)
+    return {"message": "User updated successfully"}
+
+@router.delete("/users/{id}")
+def delete_user(id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user_role)):
+    if (hasattr(user.role, 'value') and user.role.value != "admin") and (str(user.role) != "admin"):
+        return JSONResponse(status_code=403, content={"error": "Admin access required"})
+    user_obj = db.query(User).filter(User.id == id).first()
+    if not user_obj:
+        return JSONResponse(status_code=404, content={"error": "User not found"})
+    db.delete(user_obj)
+    db.commit()
+    return {"message": "User deleted successfully"}
