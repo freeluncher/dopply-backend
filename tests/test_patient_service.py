@@ -17,11 +17,18 @@ def make_user(**kwargs):
     return user
 
 def test_get_patients_returns_all(mock_db):
+    # Mock the join and filter chain
     patients = [make_patient(patient_id=1), make_patient(patient_id=2)]
-    mock_db.query.return_value.all.return_value = patients
+    mock_query = mock_db.query.return_value
+    mock_join = mock_query.join.return_value
+    mock_filter = mock_join.filter.return_value
+    mock_filter.all.return_value = patients
     result = patient_service.get_patients(mock_db)
     assert result == patients
     mock_db.query.assert_called_with(Patient)
+    mock_query.join.assert_called()
+    mock_join.filter.assert_called()
+    mock_filter.all.assert_called()
 
 def test_get_patient_found(mock_db):
     patient = make_patient(patient_id=10)

@@ -5,7 +5,8 @@ from app.core.security import get_password_hash
 from typing import List, Optional
 
 def get_patients(db: Session) -> List[Patient]:
-    return db.query(Patient).all()
+    # Only return patients with a valid linked User (with name and email)
+    return db.query(Patient).join(User, Patient.patient_id == User.id).filter(User.name != None, User.email != None).all()
 
 def get_patient(db: Session, patient_id: int) -> Optional[Patient]:
     return db.query(Patient).filter(Patient.patient_id == patient_id).first()

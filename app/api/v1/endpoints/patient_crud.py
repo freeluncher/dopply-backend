@@ -39,7 +39,19 @@ class AssignPatientByEmailIn(BaseModel):
 
 @router.get("/patients", response_model=List[PatientOut])
 def read_patients(db: Session = Depends(get_db)):
-    return get_patients(db)
+    patients = db.query(Patient).join(User, Patient.patient_id == User.id).filter(User.name != None, User.email != None).all()
+    result = []
+    for p in patients:
+        result.append(PatientOut(
+            id=p.patient_id,
+            patient_id=p.patient_id,
+            name=p.user.name if p.user else None,
+            email=p.user.email if p.user else None,
+            birth_date=p.birth_date,
+            address=p.address,
+            medical_note=p.medical_note,
+        ))
+    return result
 
 @router.get("/patients/{patient_id}", response_model=PatientOut)
 def read_patient(patient_id: int, db: Session = Depends(get_db)):
