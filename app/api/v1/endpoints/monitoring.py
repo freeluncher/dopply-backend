@@ -92,3 +92,37 @@ def save_monitoring_record(req: MonitoringRecordRequest, db: Session = Depends(g
         if "not found" in msg:
             raise HTTPException(status_code=404, detail=msg)
         raise HTTPException(status_code=400, detail=msg)
+
+# --- Endpoint untuk menerima hasil monitoring dari pasien ---
+class PatientMonitoringBPMData(BaseModel):
+    time: int
+    bpm: int
+
+class PatientMonitoringRequest(BaseModel):
+    patient_id: int
+    bpm_data: list[PatientMonitoringBPMData]
+    classification: Optional[str] = None
+    monitoring_result: Optional[str] = None
+
+@router.post("/patient/monitoring", status_code=201)
+def save_patient_monitoring_result(req: PatientMonitoringRequest, db: Session = Depends(get_db)):
+    # Simpan hasil monitoring dari pasien
+    patient = db.query(Patient).filter(Patient.id == req.patient_id).first()
+    if not patient:
+        raise HTTPException(status_code=404, detail="Patient not found")
+    # Simpan ke tabel Record (atau tabel lain sesuai kebutuhan)
+    from app.models.medical import Record
+    record = Record(
+        patient_id=patient.id,
+        doctor_id=None,  # Tidak ada dokter, ini hasil mandiri pasien
+        source="patient",
+        bpm_data=[{"time": d.time, "bpm": d.bpm} for d in req.bpm_data],
+        start_time=None,
+        end_time=None,
+        classification=req.classification,
+        notes=req.monitoring_result
+    )
+    db.add(record)
+    db.commit()
+    db.refresh(record)
+    return {"message": "Monitoring result saved", "record_id": record.id}
