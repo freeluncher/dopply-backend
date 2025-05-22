@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from app.db.session import SessionLocal
 from app.models.medical import Doctor, User
 from app.core.security import verify_jwt_token
+from app.services.admin_doctor_validation_service import AdminDoctorValidationService
 
 router = APIRouter()
 security = HTTPBearer()
@@ -28,28 +29,19 @@ def get_current_admin(
 
 @router.get("/doctor/validation-requests/count")
 def count_doctor_validation_requests(db: Session = Depends(get_db), admin: User = Depends(get_current_admin)):
-    count = db.query(Doctor).filter(Doctor.is_valid == False).count()
-    return {"pending_validation": count}
+    return {"pending_validation": AdminDoctorValidationService.count_doctor_validation_requests(db)}
 
 @router.get("/doctor/validation-requests")
 def list_doctor_validation_requests(db: Session = Depends(get_db), admin: User = Depends(get_current_admin)):
-    doctors = db.query(Doctor).filter(Doctor.is_valid == False).all()
-    result = []
-    for doctor in doctors:
-        user = db.query(User).filter(User.id == doctor.doctor_id).first()
-        result.append({
-            "doctor_id": doctor.id,
-            "doctor_id": doctor.doctor_id,
-            "name": user.name if user else None,
-            "email": user.email if user else None
-        })
-    return result
+    return AdminDoctorValidationService.list_doctor_validation_requests(db)
 
 @router.post("/doctor/validate/{doctor_id}")
 def validate_doctor(doctor_id: int, db: Session = Depends(get_db), admin: User = Depends(get_current_admin)):
-    doctor = db.query(Doctor).filter(Doctor.id == doctor_id).first()
-    if not doctor:
-        raise HTTPException(status_code=404, detail="Doctor not found")
-    doctor.is_valid = True
-    db.commit()
-    return {"message": "Doctor validated successfully"}
+    try:
+        AdminDoctorValidationService.validate_doctor(db, doctor_id)
+        return {"message": "Doctor validated successfully"}
+    except ValueError as e:
+        msg = str(e)
+        if "not found" in msg:
+            raise HTTPException(status_code=404, detail=msg)
+        raise HTTPException(status_code=400, detail=msg)
