@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.schemas.patient import PatientCreate, PatientUpdate, PatientOut
-from app.services.patient_service import get_patients, get_patient, update_patient, delete_patient
+from app.services.patient_service import get_patients, get_patient, update_patient, delete_patient, register_user_universal
 from app.db.session import SessionLocal
 from app.models.medical import Doctor, Patient, User, DoctorPatientAssociation
 from typing import List, Optional
@@ -146,4 +146,49 @@ def unassign_patient_from_doctor(doctor_id: int, patient_id: int, db: Session = 
         msg = str(e)
         if "not found" in msg:
             raise HTTPException(status_code=404, detail=msg)
+        raise HTTPException(status_code=400, detail=msg)
+
+@router.post("/patients", response_model=PatientOut, status_code=201)
+def create_patient(patient: PatientCreate, db: Session = Depends(get_db)):
+    # Daftar user baru dengan role patient
+    from app.models.medical import UserRole
+    class PatientCreateWithRole(PatientCreate):
+        role: str = "patient"
+    # Gabungkan data dengan role
+    data = PatientCreateWithRole(**patient.dict(), role="patient")
+    created_user = register_user_universal(db, data)
+    patient_obj = db.query(Patient).filter(Patient.patient_id == created_user.id).first()
+    return PatientOut(
+        id=created_user.id,
+        name=created_user.name,
+        email=created_user.email,
+        birth_date=getattr(patient_obj, "birth_date", None),
+        address=getattr(patient_obj, "address", None),
+        medical_note=getattr(patient_obj, "medical_note", None)
+    )
+
+class AssignPatientIn(BaseModel):
+    patient_id: int
+    status: Optional[str] = None
+    note: Optional[str] = None
+
+@router.post("/doctors/{doctor_id}/assign-patient", response_model=DoctorPatientAssociationOut)
+def assign_patient_to_doctor_body(
+    doctor_id: int,
+    data: AssignPatientIn,
+    db: Session = Depends(get_db)
+):
+    try:
+        assoc = DoctorPatientService.assign_patient_to_doctor(
+            db, doctor_id, data.patient_id,
+            status=data.status,
+            note=data.note
+        )
+        return assoc
+    except ValueError as e:
+        msg = str(e)
+        if "not found" in msg:
+            raise HTTPException(status_code=404, detail=msg)
+        if "already assigned" in msg:
+            raise HTTPException(status_code=400, detail=msg)
         raise HTTPException(status_code=400, detail=msg)
