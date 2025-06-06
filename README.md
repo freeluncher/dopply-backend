@@ -2,7 +2,7 @@
 
 [![Python](https://img.shields.io/badge/python-3.12-blue.svg)](https://www.python.org/downloads/release/python-3120/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.110.0-green.svg)](https://fastapi.tiangolo.com/)
-[![Build](https://img.shields.io/github/actions/workflow/status/your-org/your-repo/ci.yml?branch=main&label=build)](https://github.com/your-org/your-repo/actions)
+[![Build](https://img.shields.io/github/actions/workflow/status/your-org/your-repo/ci.yml?branch=main&label=build)](https://github.com/freeluncher/dopply-backend/actions)
 [![Coverage Status](https://img.shields.io/badge/coverage-passing-brightgreen.svg)](https://pytest.org/)
 [![License](https://img.shields.io/github/license/your-org/your-repo.svg)](LICENSE)
 
