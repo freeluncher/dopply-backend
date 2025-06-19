@@ -13,6 +13,13 @@ jobs:
     - name: Checkout source code
       uses: actions/checkout@v3
 
+    - name: Create .env file from GitHub Secrets
+      run: |
+        echo "DATABASE_URL=${{ secrets.DATABASE_URL }}" > .env
+        echo "SECRET_KEY=${{ secrets.SECRET_KEY }}" >> .env
+        echo "ALGORITHM=${{ secrets.ALGORITHM }}" >> .env
+        echo "ACCESS_TOKEN_EXPIRE_MINUTES=${{ secrets.ACCESS_TOKEN_EXPIRE_MINUTES }}" >> .env
+
     - name: Deploy to Ubuntu VM via SSH
       uses: appleboy/ssh-action@v1.0.0
       with:
@@ -43,6 +50,11 @@ jobs:
           git fetch origin main
           git reset --hard origin/main
           git clean -fd
+
+          # Copy .env dari home jika ada
+          if [ -f "../.env" ]; then
+            cp ../.env .env
+          fi
 
           echo "🐍 Setup virtual environment dan dependency..."
 
