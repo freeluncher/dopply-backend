@@ -83,3 +83,6 @@ alembic/versions/*.pyc
 # Ignore requirements lock
 poetry.lock
 Pipfile.lock
+
+#Others
+bfg-1.14.0.jar
