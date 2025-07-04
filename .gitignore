@@ -1,19 +1,18 @@
+###############################
+# Python
 venv/
-# Byte-compiled / optimized / DLL files
+env/
 __pycache__/
 *.py[cod]
 *$py.class
-
-# C extensions
+.Python
 *.so
 
-# Distribution / packaging
-.Python
-env/
+# Build & Packaging
 build/
-develop-eggs/
 dist/
 downloads/
+develop-eggs/
 eggs/
 .eggs/
 lib/
@@ -43,7 +42,7 @@ coverage.xml
 .pytest_cache/
 
 # Jupyter Notebook
-.ipynb_checkpoints
+.ipynb_checkpoints/
 
 # pyenv
 .python-version
@@ -63,6 +62,7 @@ Thumbs.db
 *.sqlite3
 *.db
 .env
+!.env.example
 .env.*
 *.pem
 *.key
@@ -77,12 +77,16 @@ config.yml
 # Alembic
 alembic/versions/*.pyc
 
-# Ignore test cache
-*.pytest_cache/
-
-# Ignore requirements lock
+# Requirements lock
 poetry.lock
 Pipfile.lock
 
-#Others
-bfg-1.14.0.jar
+# Java tools
+bfg-*.jar
+
+# Backup & temp files
+*~
+*.bak
+*.tmp
+*.swp
+*.swo
