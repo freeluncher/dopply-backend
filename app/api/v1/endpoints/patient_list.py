@@ -28,7 +28,7 @@ def get_current_doctor_id(credentials: HTTPAuthorizationCredentials = Security(s
         raise HTTPException(status_code=403, detail="Doctor access required")
     return user.id
 
-@router.get("/patients/by-doctor", response_model=List[dict])
+@router.get("/patients/by-doctor", response_model=List[dict], tags=["Doctor Dashboard"])
 def get_patients_by_doctor(
     search: Optional[str] = None,
     db: Session = Depends(get_db),

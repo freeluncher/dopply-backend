@@ -27,15 +27,15 @@ def get_current_admin(
         raise HTTPException(status_code=403, detail="Admin access required")
     return user
 
-@router.get("/doctor/validation-requests/count")
+@router.get("/doctor/validation-requests/count", tags=["Doctor Validation"])
 def count_doctor_validation_requests(db: Session = Depends(get_db), admin: User = Depends(get_current_admin)):
     return {"pending_validation": AdminDoctorValidationService.count_doctor_validation_requests(db)}
 
-@router.get("/doctor/validation-requests")
+@router.get("/doctor/validation-requests", tags=["Doctor Validation"])
 def list_doctor_validation_requests(db: Session = Depends(get_db), admin: User = Depends(get_current_admin)):
     return AdminDoctorValidationService.list_doctor_validation_requests(db)
 
-@router.post("/doctor/validate/{doctor_id}")
+@router.post("/doctor/validate/{doctor_id}", tags=["Doctor Validation"])
 def validate_doctor(doctor_id: int, db: Session = Depends(get_db), admin: User = Depends(get_current_admin)):
     try:
         AdminDoctorValidationService.validate_doctor(db, doctor_id)
