@@ -50,6 +50,7 @@ class UserOut(BaseModel):
     email: str
     role: str
     is_active: Optional[bool] = None
+    photo_url: Optional[str] = None
 
     class Config:
         orm_mode = True

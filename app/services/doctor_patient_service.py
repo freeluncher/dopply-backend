@@ -3,12 +3,13 @@ from sqlalchemy.orm import Session
 from app.models.medical import Doctor, Patient, User, DoctorPatientAssociation
 from datetime import datetime
 from typing import Optional, List
+from app.core.time_utils import get_local_naive_now
 
 class DoctorPatientService:
     @staticmethod
     def assign_patient_to_doctor(db: Session, doctor_id: int, patient_id: int, status: Optional[str] = None, note: Optional[str] = None) -> DoctorPatientAssociation:
         doctor = db.query(Doctor).filter(Doctor.doctor_id == doctor_id).first()
-        patient = db.query(Patient).filter(Patient.patient_id == patient_id).first()
+        patient = db.query(Patient).filter(Patient.id == patient_id).first()
         if not doctor or not patient:
             raise ValueError("Doctor or patient not found")
         assoc = db.query(DoctorPatientAssociation).filter_by(doctor_id=doctor_id, patient_id=patient_id).first()
@@ -17,7 +18,7 @@ class DoctorPatientService:
         assoc = DoctorPatientAssociation(
             doctor_id=doctor_id,
             patient_id=patient_id,
-            assigned_at=datetime.utcnow(),
+            assigned_at=get_local_naive_now(),
             status=status,
             note=note
         )
@@ -34,13 +35,13 @@ class DoctorPatientService:
         patient = db.query(Patient).join(User).filter(User.email == email).first()
         if not patient:
             raise ValueError("Patient with this email not found")
-        assoc = db.query(DoctorPatientAssociation).filter_by(doctor_id=doctor_id, patient_id=patient.patient_id).first()
+        assoc = db.query(DoctorPatientAssociation).filter_by(doctor_id=doctor_id, patient_id=patient.id).first()
         if assoc:
             raise ValueError("Patient already assigned to doctor")
         assoc = DoctorPatientAssociation(
             doctor_id=doctor_id,
-            patient_id=patient.patient_id,
-            assigned_at=datetime.utcnow(),
+            patient_id=patient.id,
+            assigned_at=get_local_naive_now(),
             status=status,
             note=note
         )
@@ -65,15 +66,15 @@ class DoctorPatientService:
     @staticmethod
     def list_patients_for_doctor(db: Session, doctor_id: int) -> list:
         assocs = db.query(DoctorPatientAssociation).filter_by(doctor_id=doctor_id).all()
-        patient_user_ids = [assoc.patient_id for assoc in assocs]
-        if not patient_user_ids:
+        patient_ids = [assoc.patient_id for assoc in assocs]
+        if not patient_ids:
             return []
-        patients = db.query(Patient).join(User, Patient.patient_id == User.id).filter(Patient.patient_id.in_(patient_user_ids)).all()
+        patients = db.query(Patient).join(User, Patient.user_id == User.id).filter(Patient.id.in_(patient_ids)).all()
         result = []
         for p in patients:
             result.append({
-                "id": p.patient_id,
-                "patient_id": p.patient_id,
+                "id": p.id,
+                "patient_id": p.id,
                 "name": p.user.name if p.user else None,
                 "email": p.user.email if p.user else None,
                 "birth_date": p.birth_date,

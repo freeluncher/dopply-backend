@@ -2,12 +2,14 @@
 from sqlalchemy.orm import Session
 from app.models.medical import Record, Patient
 from datetime import datetime
+from app.core.time_utils import get_local_naive_now
 from typing import List, Optional, Dict, Any
 import logging
 
 class MonitoringService:
     @staticmethod
-    def process_monitoring_result(db: Session, patient_id: int, bpm_data: List[int], doctor_note: Optional[str] = None) -> Dict[str, Any]:
+    def process_monitoring_result(db: Session, patient_id: int, bpm_data: List[int], doctor_note: Optional[str] = None, doctor_id: Optional[int] = None) -> Dict[str, Any]:
+        logger = logging.getLogger("uvicorn")
         patient = db.query(Patient).filter(Patient.id == patient_id).first()
         if not patient:
             raise ValueError("Patient not found")
@@ -25,11 +27,13 @@ class MonitoringService:
         elif max(bpm_data) - min(bpm_data) > 40:
             classification = "abnormal"
             abnormal_type = "atrial fibrilasi"
-        start_time = datetime.utcnow()
-        end_time = datetime.utcnow()
+        # Gunakan zona waktu lokal Indonesia (WIB) 
+        start_time = get_local_naive_now()
+        end_time = get_local_naive_now()
+        logger.info(f"[MONITORING_RECORD] Akan insert record: patient_id={patient_id}, doctor_id={doctor_id}, classification={classification}, start_time={start_time}, end_time={end_time}")
         new_record = Record(
             patient_id=patient_id,
-            doctor_id=None,
+            doctor_id=doctor_id,
             source="clinic",
             bpm_data=bpm_data,
             start_time=start_time,
@@ -41,6 +45,7 @@ class MonitoringService:
         db.add(new_record)
         db.commit()
         db.refresh(new_record)
+        logger.info(f"[MONITORING_RECORD] Record berhasil di-insert: id={new_record.id}, doctor_id={new_record.doctor_id}")
         return {
             "patient_id": patient_id,
             "bpm_data": bpm_data,
@@ -58,10 +63,10 @@ class MonitoringService:
         if not bpm_values:
             raise ValueError("bpm_data required")
         avg_bpm = sum(bpm_values) / len(bpm_values)
-        if avg_bpm < 60:
+        if avg_bpm < 110:
             result = "pathologic"
             classification = "bradikardia"
-        elif avg_bpm > 100:
+        elif avg_bpm > 160:
             result = "pathologic"
             classification = "takikardia"
         else:

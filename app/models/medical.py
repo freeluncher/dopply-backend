@@ -1,8 +1,9 @@
-from sqlalchemy import Column, Integer, String, Enum, Date, Text, ForeignKey, DateTime, JSON, Boolean, Table
+from sqlalchemy import Column, Integer, String, Enum, Date, Text, ForeignKey, DateTime, JSON, Boolean, Table, Float, Float
 from sqlalchemy.orm import relationship
 from app.db.base import Base
 import enum
 from datetime import datetime
+from app.core.time_utils import get_local_naive_now
 
 class UserRole(enum.Enum):
     admin = "admin"
@@ -16,32 +17,48 @@ class User(Base):
     email = Column(String(255), unique=True, nullable=False)
     password_hash = Column(String(255), nullable=False)
     role = Column(Enum(UserRole), nullable=False)
+    photo_url = Column(String(255), nullable=True)
+    created_at = Column(DateTime, nullable=False, default=get_local_naive_now)
+    
     patients = relationship("Patient", back_populates="user")
     records_as_doctor = relationship("Record", back_populates="doctor", foreign_keys='Record.doctor_id')
     records_shared = relationship("Record", back_populates="shared_with_user", foreign_keys='Record.shared_with')
+    # Relationship for when this user is a doctor in doctor_patient associations
+    assigned_patients = relationship("Patient", secondary="doctor_patient", viewonly=True,
+                                   primaryjoin="User.id == DoctorPatientAssociation.doctor_id",
+                                   secondaryjoin="DoctorPatientAssociation.patient_id == Patient.id")
 
 class DoctorPatientAssociation(Base):
     __tablename__ = "doctor_patient"
-    doctor_id = Column(Integer, ForeignKey("doctors.doctor_id", ondelete="CASCADE"), primary_key=True)
-    patient_id = Column(Integer, ForeignKey("patients.patient_id", ondelete="CASCADE"), primary_key=True)
-    assigned_at = Column(DateTime, nullable=False, default=datetime.utcnow)
-    status = Column(String(50), nullable=True)  # contoh: 'active', 'finished', dsb
-    note = Column(Text, nullable=True)  # catatan khusus dokter terhadap pasien
+    doctor_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    patient_id = Column(Integer, ForeignKey("patients.id", ondelete="CASCADE"), primary_key=True)
+    assigned_at = Column(DateTime, nullable=False, default=get_local_naive_now)
+    updated_at = Column(DateTime, nullable=True, default=get_local_naive_now, onupdate=get_local_naive_now)
+    status = Column(String(50), nullable=True, default="active")
+    note = Column(Text, nullable=True)
 
-    doctor = relationship("Doctor", back_populates="doctor_patient_associations")
+    # Relationships
+    doctor = relationship("User", foreign_keys=[doctor_id])
     patient = relationship("Patient", back_populates="doctor_patient_associations")
 
 class Patient(Base):
     __tablename__ = "patients"
     id = Column(Integer, primary_key=True, index=True)
-    patient_id = Column(Integer, ForeignKey("users.id"), nullable=False)  # ubah dari user_id ke patient_id
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     birth_date = Column(Date, nullable=True)
     address = Column(String(255), nullable=True)
     medical_note = Column(Text, nullable=True)
+    age = Column(Integer, nullable=True)
+    gender = Column(String(10), nullable=True)
+    phone = Column(String(20), nullable=True)
+    
     user = relationship("User", back_populates="patients")
     records = relationship("Record", back_populates="patient")
     doctor_patient_associations = relationship("DoctorPatientAssociation", back_populates="patient")
-    doctors = relationship("Doctor", secondary="doctor_patient", back_populates="patients", viewonly=True)
+    # Many-to-many relationship with doctors through the association table
+    assigned_doctors = relationship("User", secondary="doctor_patient", viewonly=True, 
+                                   primaryjoin="Patient.id == DoctorPatientAssociation.patient_id",
+                                   secondaryjoin="DoctorPatientAssociation.doctor_id == User.id")
 
 class RecordSource(enum.Enum):
     clinic = "clinic"
@@ -82,8 +99,99 @@ class Notification(Base):
 class Doctor(Base):
     __tablename__ = "doctors"
     id = Column(Integer, primary_key=True, index=True)
-    doctor_id = Column(Integer, ForeignKey("users.id"), nullable=False, unique=True)  # ubah dari user_id ke doctor_id
+    doctor_id = Column(Integer, ForeignKey("users.id"), nullable=False, unique=True)
     is_valid = Column(Boolean, default=False, nullable=False)
+    
+    # User relationship
     user = relationship("User")
-    doctor_patient_associations = relationship("DoctorPatientAssociation", back_populates="doctor")
-    patients = relationship("Patient", secondary="doctor_patient", back_populates="doctors", viewonly=True)
+    
+    # Many-to-many relationship with patients through the association table
+    assigned_patients = relationship("Patient", secondary="doctor_patient", viewonly=True,
+                                   primaryjoin="Doctor.doctor_id == DoctorPatientAssociation.doctor_id",
+                                   secondaryjoin="DoctorPatientAssociation.patient_id == Patient.id")
+
+# Fetal Monitoring Models
+
+class MonitoringType(enum.Enum):
+    clinic = "clinic"
+    home = "home"
+
+class FetalClassification(enum.Enum):
+    normal = "normal"
+    bradycardia = "bradycardia"
+    tachycardia = "tachycardia"
+    irregular = "irregular"
+
+class RiskLevel(enum.Enum):
+    low = "low"
+    medium = "medium"
+    high = "high"
+
+class OverallClassification(enum.Enum):
+    normal = "normal"
+    concerning = "concerning"
+    abnormal = "abnormal"
+
+class FetalMonitoringSession(Base):
+    __tablename__ = "fetal_monitoring_sessions"
+    id = Column(String(50), primary_key=True, index=True)
+    patient_id = Column(Integer, ForeignKey("patients.id"), nullable=True)
+    doctor_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    monitoring_type = Column(Enum(MonitoringType), nullable=False)
+    gestational_age = Column(Integer, nullable=False)
+    start_time = Column(DateTime, nullable=False, default=get_local_naive_now)
+    end_time = Column(DateTime, nullable=True)
+    notes = Column(Text, nullable=True)  # Patient notes
+    doctor_notes = Column(Text, nullable=True)  # Doctor notes
+    shared_with_doctor = Column(Boolean, default=False, nullable=False)
+    created_at = Column(DateTime, nullable=False, default=get_local_naive_now)
+    updated_at = Column(DateTime, nullable=False, default=get_local_naive_now, onupdate=get_local_naive_now)
+    
+    # Relationships
+    patient = relationship("Patient")
+    doctor = relationship("User", foreign_keys=[doctor_id])
+    readings = relationship("FetalHeartRateReading", back_populates="session", cascade="all, delete-orphan")
+    result = relationship("FetalMonitoringResult", back_populates="session", uselist=False, cascade="all, delete-orphan")
+
+class FetalHeartRateReading(Base):
+    __tablename__ = "fetal_heart_rate_readings"
+    id = Column(Integer, primary_key=True, index=True)
+    session_id = Column(String(50), ForeignKey("fetal_monitoring_sessions.id"), nullable=False)
+    timestamp = Column(DateTime, nullable=False)
+    bpm = Column(Integer, nullable=False)
+    signal_quality = Column(Float, nullable=True)  # 0.0 - 1.0
+    classification = Column(Enum(FetalClassification), nullable=False)
+    created_at = Column(DateTime, nullable=False, default=get_local_naive_now)
+    
+    # Relationships
+    session = relationship("FetalMonitoringSession", back_populates="readings")
+
+class FetalMonitoringResult(Base):
+    __tablename__ = "fetal_monitoring_results"
+    id = Column(Integer, primary_key=True, index=True)
+    session_id = Column(String(50), ForeignKey("fetal_monitoring_sessions.id"), nullable=False, unique=True)
+    overall_classification = Column(Enum(OverallClassification), nullable=False)
+    average_bpm = Column(Float, nullable=False)
+    baseline_variability = Column(Float, nullable=True)
+    findings = Column(JSON, nullable=True)  # Array of strings
+    recommendations = Column(JSON, nullable=True)  # Array of strings
+    risk_level = Column(Enum(RiskLevel), nullable=False)
+    created_at = Column(DateTime, nullable=False, default=get_local_naive_now)
+    
+    # Relationships
+    session = relationship("FetalMonitoringSession", back_populates="result")
+
+class PregnancyInfo(Base):
+    __tablename__ = "pregnancy_info"
+    id = Column(Integer, primary_key=True, index=True)
+    patient_id = Column(Integer, ForeignKey("patients.id"), nullable=False)
+    gestational_age = Column(Integer, nullable=False)  # weeks
+    last_menstrual_period = Column(Date, nullable=True)
+    expected_due_date = Column(Date, nullable=True)
+    is_high_risk = Column(Boolean, default=False, nullable=False)
+    complications = Column(JSON, nullable=True)  # Array of strings
+    created_at = Column(DateTime, nullable=False, default=get_local_naive_now)
+    updated_at = Column(DateTime, nullable=False, default=get_local_naive_now, onupdate=get_local_naive_now)
+    
+    # Relationships
+    patient = relationship("Patient")
