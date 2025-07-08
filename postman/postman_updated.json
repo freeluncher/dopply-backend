@@ -1,0 +1,254 @@
+{
+	"info": {
+		"_postman_id": "ea774067-9987-4da6-b856-3b20c019566b",
+		"name": "Dopply API (Updated)",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Auth",
+			"item": [
+				{
+					"name": "Login Admin",
+					"request": {
+						"method": "POST",
+						"url": {"raw": "{{base_url}}/api/v1/login", "host": ["{{base_url}}"], "path": ["api", "v1", "login"]}
+					}
+				},
+				{
+					"name": "Login Doctor",
+					"request": {
+						"method": "POST",
+						"url": {"raw": "{{base_url}}/api/v1/login", "host": ["{{base_url}}"], "path": ["api", "v1", "login"]}
+					}
+				},
+				{
+					"name": "Login Patient",
+					"request": {
+						"method": "POST",
+						"url": {"raw": "{{base_url}}/api/v1/login", "host": ["{{base_url}}"], "path": ["api", "v1", "login"]}
+					}
+				},
+				{
+					"name": "Verify Token",
+					"request": {
+						"method": "GET",
+						"url": {"raw": "{{base_url}}/api/v1/token/verify", "host": ["{{base_url}}"], "path": ["api", "v1", "token", "verify"]}
+					}
+				}
+			]
+		},
+		{
+			"name": "Only Admin",
+			"item": [
+				{
+					"name": "Count Doctor Request Validation",
+					"request": {
+						"method": "GET",
+						"url": {"raw": "{{base_url}}/api/v1/admin/doctor/validation-requests/count", "host": ["{{base_url}}"], "path": ["api", "v1", "admin", "doctor", "validation-requests", "count"]}
+					}
+				},
+				{
+					"name": "List Doctor Request Validation",
+					"request": {
+						"method": "GET",
+						"url": {"raw": "{{base_url}}/api/v1/admin/doctor/validation-requests", "host": ["{{base_url}}"], "path": ["api", "v1", "admin", "doctor", "validation-requests"]}
+					}
+				},
+				{
+					"name": "Validate Doctor by Id",
+					"request": {
+						"method": "POST",
+						"url": {"raw": "{{base_url}}/api/v1/admin/doctor/validate/:doctor_id", "host": ["{{base_url}}"], "path": ["api", "v1", "admin", "doctor", "validate", ":doctor_id"]}
+					}
+				},
+				{
+					"name": "Get List Users",
+					"request": {
+						"method": "GET",
+						"url": {"raw": "{{base_url}}/api/v1/users", "host": ["{{base_url}}"], "path": ["api", "v1", "users"]}
+					}
+				},
+				{
+					"name": "Admin Create User",
+					"request": {
+						"method": "POST",
+						"url": {"raw": "{{base_url}}/api/v1/users", "host": ["{{base_url}}"], "path": ["api", "v1", "users"]}
+					}
+				},
+				{
+					"name": "Admin Update User",
+					"request": {
+						"method": "PUT",
+						"url": {"raw": "{{base_url}}/api/v1/users/:user_id", "host": ["{{base_url}}"], "path": ["api", "v1", "users", ":user_id"]}
+					}
+				},
+				{
+					"name": "Admin Delete User",
+					"request": {
+						"method": "DELETE",
+						"url": {"raw": "{{base_url}}/api/v1/users/:user_id", "host": ["{{base_url}}"], "path": ["api", "v1", "users", ":user_id"]}
+					}
+				}
+			]
+		},
+		{
+			"name": "All User (Need Login)",
+			"item": [
+				{
+					"name": "Change Email",
+					"request": {
+						"method": "PUT",
+						"url": {"raw": "{{base_url}}/api/v1/account/email", "host": ["{{base_url}}"], "path": ["api", "v1", "account", "email"]}
+					}
+				},
+				{
+					"name": "Change Password",
+					"request": {
+						"method": "PUT",
+						"url": {"raw": "{{base_url}}/api/v1/account/password", "host": ["{{base_url}}"], "path": ["api", "v1", "account", "password"]}
+					}
+				}
+			]
+		},
+		{
+			"name": "Only Doctor",
+			"item": [
+				{
+					"name": "List Patient Connected with Doctor",
+					"request": {
+						"method": "GET",
+						"url": {"raw": "{{base_url}}/api/v1/patients/by-doctor", "host": ["{{base_url}}"], "path": ["api", "v1", "patients", "by-doctor"]}
+					}
+				}
+			]
+		},
+		{
+			"name": "Only Patient",
+			"item": [
+				{
+					"name": "Get Patient Profile",
+					"request": {
+						"method": "GET",
+						"url": {"raw": "{{base_url}}/api/v1/patient/profile", "host": ["{{base_url}}"], "path": ["api", "v1", "patient", "profile"]}
+					}
+				}
+			]
+		},
+		{
+			"name": "For Admin & Doctor",
+			"item": [
+				{
+					"name": "Get List Patient",
+					"request": {
+						"method": "GET",
+						"url": {"raw": "{{base_url}}/api/v1/patients", "host": ["{{base_url}}"], "path": ["api", "v1", "patients"]}
+					}
+				},
+				{
+					"name": "Get Patient By Id",
+					"request": {
+						"method": "GET",
+						"url": {"raw": "{{base_url}}/api/v1/patients/:patient_id", "host": ["{{base_url}}"], "path": ["api", "v1", "patients", ":patient_id"]}
+					}
+				},
+				{
+					"name": "Create New Patient",
+					"request": {
+						"method": "POST",
+						"url": {"raw": "{{base_url}}/api/v1/patients", "host": ["{{base_url}}"], "path": ["api", "v1", "patients"]}
+					}
+				},
+				{
+					"name": "Update Patient Data",
+					"request": {
+						"method": "PUT",
+						"url": {"raw": "{{base_url}}/api/v1/patients/:patient_id", "host": ["{{base_url}}"], "path": ["api", "v1", "patients", ":patient_id"]}
+					}
+				},
+				{
+					"name": "Delete Patient by Id",
+					"request": {
+						"method": "DELETE",
+						"url": {"raw": "{{base_url}}/api/v1/patients/:patient_id", "host": ["{{base_url}}"], "path": ["api", "v1", "patients", ":patient_id"]}
+					}
+				},
+				{
+					"name": "Assign Patient to Doctor by Id",
+					"request": {
+						"method": "POST",
+						"url": {"raw": "{{base_url}}/api/v1/doctors/:doctor_id/assign-patient/:patient_id", "host": ["{{base_url}}"], "path": ["api", "v1", "doctors", ":doctor_id", "assign-patient", ":patient_id"]}
+					}
+				},
+				{
+					"name": "Assign Patient to Doctor by Email",
+					"request": {
+						"method": "POST",
+						"url": {"raw": "{{base_url}}/api/v1/doctors/:doctor_id/assign-patient-by-email", "host": ["{{base_url}}"], "path": ["api", "v1", "doctors", ":doctor_id", "assign-patient-by-email"]}
+					}
+				},
+				{
+					"name": "Update Status/Note Relation Doctor-Patient",
+					"request": {
+						"method": "PATCH",
+						"url": {"raw": "{{base_url}}/api/v1/doctors/:doctor_id/patients/:patient_id", "host": ["{{base_url}}"], "path": ["api", "v1", "doctors", ":doctor_id", "patients", ":patient_id"]}
+					}
+				},
+				{
+					"name": "List Patient Connected With Doctor",
+					"request": {
+						"method": "GET",
+						"url": {"raw": "{{base_url}}/api/v1/doctors/:doctor_id/patients", "host": ["{{base_url}}"], "path": ["api", "v1", "doctors", ":doctor_id", "patients"]}
+					}
+				},
+				{
+					"name": "Delete Relation Doctor-Patient",
+					"request": {
+						"method": "DELETE",
+						"url": {"raw": "{{base_url}}/api/v1/doctors/:doctor_id/unassign-patient/:patient_id", "host": ["{{base_url}}"], "path": ["api", "v1", "doctors", ":doctor_id", "unassign-patient", ":patient_id"]}
+					}
+				}
+			]
+		},
+		{
+			"name": "For Doctor & Patient",
+			"item": [
+				{
+					"name": "Doctor Send Monitoring Data",
+					"request": {
+						"method": "POST",
+						"url": {"raw": "{{base_url}}/api/v1/monitoring", "host": ["{{base_url}}"], "path": ["api", "v1", "monitoring"]}
+					}
+				},
+				{
+					"name": "Classify BPM",
+					"request": {
+						"method": "POST",
+						"url": {"raw": "{{base_url}}/api/v1/classify_bpm", "host": ["{{base_url}}"], "path": ["api", "v1", "classify_bpm"]}
+					}
+				},
+				{
+					"name": "Save Monitoring Record",
+					"request": {
+						"method": "POST",
+						"url": {"raw": "{{base_url}}/api/v1/monitoring_record", "host": ["{{base_url}}"], "path": ["api", "v1", "monitoring_record"]}
+					}
+				},
+				{
+					"name": "Patient Save Monitoring Record",
+					"request": {
+						"method": "POST",
+						"url": {"raw": "{{base_url}}/api/v1/patient/monitoring", "host": ["{{base_url}}"], "path": ["api", "v1", "patient", "monitoring"]}
+					}
+				},
+				{
+					"name": "Get Monitoring History Logged in Patient",
+					"request": {
+						"method": "GET",
+						"url": {"raw": "{{base_url}}/api/v1/patient/monitoring/history", "host": ["{{base_url}}"], "path": ["api", "v1", "patient", "monitoring", "history"]}
+					}
+				}
+			]
+		}
+	]
+}
