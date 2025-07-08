@@ -466,7 +466,6 @@ def update_patient_status(
     if status_changed:
         association.status = new_status
         association.updated_at = get_local_naive_now()
-        association.status_updated_by = current_user.id
     if request.notes is not None:
         association.note = request.notes
     association.updated_at = get_local_naive_now()
@@ -505,8 +504,7 @@ def update_patient_status(
         "notes": association.note,
         "last_record_date": None,  # Optionally fetch last record if needed
         "total_records": None,     # Optionally fetch total records if needed
-        "status_updated_at": association.updated_at,
-        "status_updated_by": association.status_updated_by
+        "status_updated_at": association.updated_at
     }
 
     return {
@@ -587,8 +585,7 @@ def get_enhanced_doctor_patients(
             "notes": association.note,
             "last_record_date": last_record.start_time if last_record else None,
             "total_records": total_records,
-            "status_updated_at": association.updated_at,
-            "status_updated_by": association.status_updated_by
+            "status_updated_at": association.updated_at
         })
     
     return {
