@@ -214,7 +214,7 @@ def save_patient_monitoring_result(req: PatientMonitoringRequest, db: Session = 
 @router.get("/patient/monitoring/history", response_model=List[PatientMonitoringHistoryItem], tags=["Medical Records"])
 def get_patient_monitoring_history(db: Session = Depends(get_db), current_user: User = Depends(get_current_doctor_or_patient)):
     """Get all monitoring records for the logged-in patient."""
-    patient = db.query(Patient).filter(Patient.patient_id == current_user.id).first()
+    patient = db.query(Patient).filter(Patient.user_id == current_user.id).first()
     if not patient:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Patient not found")
     records = db.query(Record).filter(Record.patient_id == patient.id).order_by(Record.id.desc()).all()
@@ -236,7 +236,7 @@ def share_monitoring_to_doctor(
     user: User = Depends(get_current_patient)
 ):
     # Ambil patient yang sesuai dengan user login
-    patient = db.query(Patient).filter(Patient.patient_id == user.id).first()
+    patient = db.query(Patient).filter(Patient.user_id == user.id).first()
     if not patient:
         return ShareMonitoringResponse(success=False, message="Patient not found or not authorized.")
     # Validasi monitoring_id milik pasien
