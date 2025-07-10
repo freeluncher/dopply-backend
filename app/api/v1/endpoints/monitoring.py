@@ -10,7 +10,7 @@ from pydantic import BaseModel
 
 # Local imports
 from app.db.session import SessionLocal
-from app.models.medical import Record, Patient, User, Doctor, Doctor
+from app.models.medical import Record, Patient, User, Doctor, DoctorPatientAssociation
 from app.services.monitoring_service import MonitoringService
 from app.core.security import verify_jwt_token
 from app.core.time_utils import get_local_naive_now
@@ -77,15 +77,28 @@ class PatientMonitoringRequest(BaseModel):
     classification: Optional[str] = None
     monitoring_result: Optional[str] = None
 
+class DoctorAssignmentInfo(BaseModel):
+    doctor_id: Optional[int] = None
+    doctor_name: Optional[str] = None
+    doctor_email: Optional[str] = None
+    assignment_date: Optional[datetime] = None
+    assignment_status: Optional[str] = None
+    assignment_notes: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
 class PatientMonitoringHistoryItem(BaseModel):
     id: int
     created_at: datetime
     monitoring_result: Optional[str] = None
     classification: Optional[str] = None
     bpm_data: List[dict]
+    source: Optional[str] = None
+    doctor_assignment: Optional[DoctorAssignmentInfo] = None
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class ShareMonitoringRequest(BaseModel):
     monitoring_id: int
@@ -213,20 +226,51 @@ def save_patient_monitoring_result(req: PatientMonitoringRequest, db: Session = 
 
 @router.get("/patient/monitoring/history", response_model=List[PatientMonitoringHistoryItem], tags=["Medical Records"])
 def get_patient_monitoring_history(db: Session = Depends(get_db), current_user: User = Depends(get_current_doctor_or_patient)):
-    """Get all monitoring records for the logged-in patient."""
+    """Get all monitoring records for the logged-in patient with doctor assignment information."""
     patient = db.query(Patient).filter(Patient.user_id == current_user.id).first()
     if not patient:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Patient not found")
+    
+    # Get records with doctor information
     records = db.query(Record).filter(Record.patient_id == patient.id).order_by(Record.id.desc()).all()
     result = []
+    
     for r in records:
+        # Initialize doctor assignment info
+        doctor_assignment = None
+        
+        # If record has a doctor, get assignment info
+        if r.doctor_id:
+            # Get doctor user info
+            doctor_user = db.query(User).filter(User.id == r.doctor_id).first()
+            
+            # Get doctor-patient association info
+            association = db.query(DoctorPatientAssociation).filter(
+                DoctorPatientAssociation.doctor_id == r.doctor_id,
+                DoctorPatientAssociation.patient_id == patient.id
+            ).first()
+            
+            if doctor_user:
+                doctor_assignment = DoctorAssignmentInfo(
+                    doctor_id=doctor_user.id,
+                    doctor_name=doctor_user.name,
+                    doctor_email=doctor_user.email,
+                    assignment_date=association.assigned_at if association else None,
+                    assignment_status=association.status if association else None,
+                    assignment_notes=association.note if association else None
+                )
+        
+        # Build the history item
         result.append(PatientMonitoringHistoryItem(
             id=r.id,
             created_at=getattr(r, "created_at", getattr(r, "start_time", None)),
             monitoring_result=getattr(r, "notes", None),
             classification=getattr(r, "classification", None),
-            bpm_data=getattr(r, "bpm_data", [])
+            bpm_data=getattr(r, "bpm_data", []),
+            source=r.source.value if hasattr(r.source, 'value') else str(r.source),
+            doctor_assignment=doctor_assignment
         ))
+    
     return result
 
 @router.post("/patient/share_monitoring", response_model=ShareMonitoringResponse, tags=["Medical Records"])
