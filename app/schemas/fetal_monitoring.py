@@ -183,9 +183,9 @@ class FetalHeartRateDataPoint(BaseModel):
         return v
 
 class FetalClassificationRequest(BaseModel):
-    fhr_data: List[FetalHeartRateDataPoint]
+    fhr_data: Union[List[int], List[FetalHeartRateDataPoint]]
     gestational_age: int
-    maternal_age: Optional[int] = None
+    maternal_age: Optional[int] = 28  # Default sesuai frontend
     duration_minutes: Optional[int] = None
 
     @validator('gestational_age')
@@ -200,19 +200,42 @@ class FetalClassificationRequest(BaseModel):
             raise ValueError('Maternal age must be between 15 and 50 years')
         return v
 
-    @validator('fhr_data')
-    def validate_fhr_data(cls, v):
+    @validator('fhr_data', pre=True)
+    def validate_and_convert_fhr_data(cls, v):
         if not v or len(v) == 0:
             raise ValueError('FHR data cannot be empty')
+        
+        # Jika data adalah list of integers, convert ke format yang diharapkan
+        if isinstance(v, list) and v:
+            if isinstance(v[0], int):
+                # Validate BPM values
+                for bpm in v:
+                    if not isinstance(bpm, int) or not 60 <= bpm <= 300:
+                        raise ValueError(f'Invalid BPM value: {bpm}. Must be integer between 60 and 300')
+                # Return as is - service akan handle conversion
+                return v
+            # Jika sudah berupa objects, validate seperti biasa
+            elif isinstance(v[0], dict):
+                return v
         return v
 
 class FetalClassificationResponse(BaseModel):
-    overall_classification: OverallClassificationEnum
-    average_bpm: float
-    baseline_variability: Optional[float] = None
-    findings: List[str] = []
+    # Format kompatibel dengan frontend Flutter
+    classification: str  # overall_classification mapping
+    confidence: float = 0.9  # default confidence score
+    risk_factors: List[str] = []  # findings untuk kompatibilitas
     recommendations: List[str] = []
-    risk_level: RiskLevelEnum
+    
+    # Fields tambahan untuk backward compatibility
+    overall_classification: Optional[OverallClassificationEnum] = None
+    average_bpm: Optional[float] = None
+    baseline_variability: Optional[float] = None
+    findings: Optional[List[str]] = None  # alias untuk risk_factors
+    risk_level: Optional[RiskLevelEnum] = None
+
+    class Config:
+        # Allow both field names untuk backward compatibility
+        validate_by_name = True
 
 # Session management schemas
 class FetalMonitoringSessionCreate(BaseModel):

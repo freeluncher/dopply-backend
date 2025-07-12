@@ -63,11 +63,17 @@ class FetalMonitoringService:
         )
         
         return {
+            # Format untuk frontend Flutter
+            "classification": overall_classification.value,
+            "confidence": 0.92,  # default confidence score
+            "risk_factors": findings,
+            "recommendations": recommendations,
+            
+            # Fields tambahan untuk backward compatibility
             "overall_classification": overall_classification.value,
             "average_bpm": round(avg_bpm, 2),
             "baseline_variability": round(variability, 2),
             "findings": findings,
-            "recommendations": recommendations,
             "risk_level": risk_level.value
         }
     
@@ -242,13 +248,13 @@ class FetalMonitoringService:
         return errors
     
     @staticmethod
-    def classify_fetal_heart_rate(fhr_data: List[Dict[str, Any]], gestational_age: int, 
+    def classify_fetal_heart_rate(fhr_data, gestational_age: int, 
                                  maternal_age: Optional[int] = None, duration_minutes: Optional[int] = None) -> Dict[str, Any]:
         """
         Main method for classifying fetal heart rate data (compatible with endpoint)
         
         Args:
-            fhr_data: List of FHR data points with timestamp, bpm, signal_quality
+            fhr_data: List of integers (BPM values) or List of dicts with FHR data points
             gestational_age: Gestational age in weeks
             maternal_age: Maternal age (optional)
             duration_minutes: Duration of monitoring (optional)
@@ -256,8 +262,20 @@ class FetalMonitoringService:
         Returns:
             Dict containing classification results
         """
-        # Extract BPM values from FHR data
-        bpm_readings = [point["bpm"] for point in fhr_data]
+        # Handle both formats: simple integers or complex objects
+        if not fhr_data:
+            raise ValueError("FHR data cannot be empty")
+            
+        # Extract BPM values based on input format
+        if isinstance(fhr_data[0], int):
+            # Simple format: [140, 142, 138, ...]
+            bpm_readings = fhr_data
+        elif isinstance(fhr_data[0], dict):
+            # Complex format: [{"bpm": 140, "timestamp": ...}, ...]
+            bpm_readings = [point["bpm"] for point in fhr_data]
+        else:
+            # Pydantic objects
+            bpm_readings = [point.bpm for point in fhr_data]
         
         # Use existing classification logic
         result = FetalMonitoringService.classify_fetal_bpm(bpm_readings, gestational_age)
