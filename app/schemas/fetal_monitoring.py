@@ -94,10 +94,27 @@ class FetalMonitoringSessionIn(BaseModel):
             raise ValueError('Session ID cannot be empty')
         return v
 
-class FetalMonitoringSessionOut(BaseModel):
-    id: str
-    patient_id: Optional[int]
-    doctor_id: Optional[int]
+# Simplified schema for saving to records table
+class FetalMonitoringSaveRequest(BaseModel):
+    patient_id: int
+    fhr_data: Union[List[int], List[dict]]  # BPM data (simple integers or time-indexed objects)
+    gestational_age: int
+    maternal_age: Optional[int] = 28
+    classification: Optional[str] = None
+    notes: Optional[str] = None
+    
+    @validator('gestational_age')
+    def validate_gestational_age(cls, v):
+        if not 1 <= v <= 42:
+            raise ValueError('Gestational age must be between 1 and 42 weeks')
+        return v
+
+class FetalMonitoringSaveResponse(BaseModel):
+    success: bool
+    message: str
+    record_id: int
+    patient_id: int
+    source: str  # "clinic" or "self"
     monitoring_type: MonitoringTypeEnum
     gestational_age: int
     start_time: datetime

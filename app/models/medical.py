@@ -110,8 +110,7 @@ class Doctor(Base):
                                    primaryjoin="Doctor.doctor_id == DoctorPatientAssociation.doctor_id",
                                    secondaryjoin="DoctorPatientAssociation.patient_id == Patient.id")
 
-# Fetal Monitoring Models
-
+# Enum untuk fetal monitoring - tetap digunakan untuk klasifikasi
 class MonitoringType(enum.Enum):
     clinic = "clinic"
     home = "home"
@@ -132,55 +131,7 @@ class OverallClassification(enum.Enum):
     concerning = "concerning"
     abnormal = "abnormal"
 
-class FetalMonitoringSession(Base):
-    __tablename__ = "fetal_monitoring_sessions"
-    id = Column(String(50), primary_key=True, index=True)
-    patient_id = Column(Integer, ForeignKey("patients.id"), nullable=True)
-    doctor_id = Column(Integer, ForeignKey("users.id"), nullable=True)
-    monitoring_type = Column(Enum(MonitoringType), nullable=False)
-    gestational_age = Column(Integer, nullable=False)
-    start_time = Column(DateTime, nullable=False, default=get_local_naive_now)
-    end_time = Column(DateTime, nullable=True)
-    notes = Column(Text, nullable=True)  # Patient notes
-    doctor_notes = Column(Text, nullable=True)  # Doctor notes
-    shared_with_doctor = Column(Boolean, default=False, nullable=False)
-    created_at = Column(DateTime, nullable=False, default=get_local_naive_now)
-    updated_at = Column(DateTime, nullable=False, default=get_local_naive_now, onupdate=get_local_naive_now)
-    
-    # Relationships
-    patient = relationship("Patient")
-    doctor = relationship("User", foreign_keys=[doctor_id])
-    readings = relationship("FetalHeartRateReading", back_populates="session", cascade="all, delete-orphan")
-    result = relationship("FetalMonitoringResult", back_populates="session", uselist=False, cascade="all, delete-orphan")
-
-class FetalHeartRateReading(Base):
-    __tablename__ = "fetal_heart_rate_readings"
-    id = Column(Integer, primary_key=True, index=True)
-    session_id = Column(String(50), ForeignKey("fetal_monitoring_sessions.id"), nullable=False)
-    timestamp = Column(DateTime, nullable=False)
-    bpm = Column(Integer, nullable=False)
-    signal_quality = Column(Float, nullable=True)  # 0.0 - 1.0
-    classification = Column(Enum(FetalClassification), nullable=False)
-    created_at = Column(DateTime, nullable=False, default=get_local_naive_now)
-    
-    # Relationships
-    session = relationship("FetalMonitoringSession", back_populates="readings")
-
-class FetalMonitoringResult(Base):
-    __tablename__ = "fetal_monitoring_results"
-    id = Column(Integer, primary_key=True, index=True)
-    session_id = Column(String(50), ForeignKey("fetal_monitoring_sessions.id"), nullable=False, unique=True)
-    overall_classification = Column(Enum(OverallClassification), nullable=False)
-    average_bpm = Column(Float, nullable=False)
-    baseline_variability = Column(Float, nullable=True)
-    findings = Column(JSON, nullable=True)  # Array of strings
-    recommendations = Column(JSON, nullable=True)  # Array of strings
-    risk_level = Column(Enum(RiskLevel), nullable=False)
-    created_at = Column(DateTime, nullable=False, default=get_local_naive_now)
-    
-    # Relationships
-    session = relationship("FetalMonitoringSession", back_populates="result")
-
+# Pregnancy info tetap diperlukan untuk gestational age
 class PregnancyInfo(Base):
     __tablename__ = "pregnancy_info"
     id = Column(Integer, primary_key=True, index=True)
