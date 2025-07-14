@@ -157,13 +157,20 @@ class FetalBPMClassificationRequest(BaseModel):
     bpm: Optional[int] = None  # For single BPM
     gestational_age: int
     readings: List[FetalHeartRateReadingIn] = []
-    monitoring_type: MonitoringTypeEnum = MonitoringTypeEnum.clinic
+    monitoring_type: Optional[str] = "clinic"  # Accept any string for backward compatibility
 
     @validator('gestational_age')
     def validate_gestational_age(cls, v):
         if not 1 <= v <= 42:
             raise ValueError('Gestational age must be between 1 and 42 weeks')
         return v
+
+    @validator('monitoring_type')
+    def validate_monitoring_type(cls, v):
+        # Allow legacy values and map them to valid ones
+        if v in ["fetal", "clinic", "home"]:
+            return "clinic" if v == "fetal" else v
+        return "clinic"  # Default fallback
 
     def get_bpm_values(self) -> List[int]:
         """Extract BPM values from readings or single BPM"""
@@ -257,14 +264,17 @@ class FetalClassificationResponse(BaseModel):
 
 # Session management schemas
 class FetalMonitoringSessionCreate(BaseModel):
+    id: Optional[str] = None  # Support legacy id field
     patient_id: int
-    monitoring_type: MonitoringTypeEnum
+    doctor_id: Optional[int] = None  # Support legacy doctor_id
+    monitoring_type: Optional[str] = "clinic"  # Accept any string for backward compatibility
     gestational_age: int
     start_time: datetime
     end_time: Optional[datetime] = None
     readings: List[FetalHeartRateReadingIn] = []
     notes: Optional[str] = None
     doctor_notes: Optional[str] = None
+    shared_with_doctor: Optional[bool] = False  # Support legacy field
     result: Optional[FetalMonitoringResultIn] = None
 
     @validator('gestational_age')
@@ -272,6 +282,13 @@ class FetalMonitoringSessionCreate(BaseModel):
         if not 1 <= v <= 42:
             raise ValueError('Gestational age must be between 1 and 42 weeks')
         return v
+
+    @validator('monitoring_type')
+    def validate_monitoring_type(cls, v):
+        # Allow legacy values and map them to valid ones
+        if v in ["fetal", "clinic", "home"]:
+            return "clinic" if v == "fetal" else v
+        return "clinic"  # Default fallback
 
 class FetalMonitoringSessionResponse(BaseModel):
     id: str

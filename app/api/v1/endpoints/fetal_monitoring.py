@@ -386,7 +386,7 @@ def get_available_doctors(
 
 # --- Backward Compatibility Aliases ---
 
-@router.post("/fetal/classify_bpm", response_model=FetalClassificationResponse, tags=["Fetal Monitoring - Legacy"], 
+@router.post("/fetal/classify_bpm", response_model=FetalBPMClassificationResponse, tags=["Fetal Monitoring - Legacy"], 
              summary="🔄 Legacy BPM Classification (Alias)",
              description="Legacy endpoint for backward compatibility. Use /fetal/classify instead.")
 def classify_bpm_legacy(
@@ -407,7 +407,7 @@ def classify_bpm_legacy(
             maternal_age=28,  # Default
             duration_minutes=None
         )
-        return FetalClassificationResponse(**result)
+        return FetalBPMClassificationResponse(**result)
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except Exception as e:
