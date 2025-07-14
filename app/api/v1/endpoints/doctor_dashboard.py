@@ -114,6 +114,29 @@ class UpdatePatientStatusResponse(BaseModel):
     class Config:
         from_attributes = True
 
+class PatientAssignmentInfo(BaseModel):
+    id: int
+    name: str
+    email: str
+    birth_date: Optional[date] = None
+    address: Optional[str] = None
+    medical_note: Optional[str] = None
+    assignment_date: Optional[datetime] = None
+    status: Optional[str] = None
+    doctor_notes: Optional[str] = None
+    
+    class Config:
+        from_attributes = True
+
+class DoctorPatientsResponse(BaseModel):
+    patients: List[PatientAssignmentInfo]
+    total: int
+    limit: int
+    offset: int
+    
+    class Config:
+        from_attributes = True
+
 # --- Endpoints ---
 
 @router.get("/patients/{patient_id}/monitoring/history", response_model=PatientMonitoringHistoryResponse, tags=["Doctor Dashboard"])
@@ -393,3 +416,84 @@ def get_patient_status_history(
     ]
     
     return {"status": "success", "data": data}
+
+@router.get("/doctors/{doctor_id}/patients", response_model=DoctorPatientsResponse, tags=["Doctor Dashboard"])
+def get_doctor_patients(
+    doctor_id: int,
+    status: Optional[str] = Query(None, description="Filter by status"),
+    search: Optional[str] = Query(None, description="Search by patient name or email"),
+    limit: int = Query(50, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_doctor_access)
+):
+    """Get list of patients assigned to doctor"""
+    
+    print(f"[DEBUG] get_doctor_patients - requested doctor_id: {doctor_id}")
+    print(f"[DEBUG] get_doctor_patients - current_user.id: {current_user.id}")
+    print(f"[DEBUG] get_doctor_patients - current_user.role: {current_user.role}")
+    
+    # Check access (doctors can only see their own patients, admins can see any doctor's patients)
+    user_role = current_user.role.value if hasattr(current_user.role, 'value') else str(current_user.role)
+    
+    if user_role == "doctor" and current_user.id != doctor_id:
+        print(f"[DEBUG] Access denied - doctor {current_user.id} trying to access patients for doctor {doctor_id}")
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    print(f"[DEBUG] Access granted for doctor patients list")
+    
+    # Base query with joins
+    query = db.query(
+        Patient,
+        User,
+        DoctorPatientAssociation
+    ).join(
+        User, Patient.user_id == User.id
+    ).join(
+        DoctorPatientAssociation, Patient.id == DoctorPatientAssociation.patient_id
+    ).filter(
+        DoctorPatientAssociation.doctor_id == doctor_id
+    )
+    
+    # Apply filters
+    if status:
+        query = query.filter(DoctorPatientAssociation.status == status)
+    
+    if search:
+        search_term = f"%{search}%"
+        query = query.filter(
+            or_(
+                User.name.ilike(search_term),
+                User.email.ilike(search_term)
+            )
+        )
+    
+    # Get total count
+    total = query.count()
+    
+    # Apply pagination
+    results = query.offset(offset).limit(limit).all()
+    
+    print(f"[DEBUG] Found {len(results)} patients for doctor {doctor_id}")
+    
+    # Format results
+    patients = []
+    for patient, user, association in results:
+        patients.append({
+            "id": patient.id,
+            "name": user.name,
+            "email": user.email,
+            "birth_date": patient.birth_date,
+            "address": patient.address,
+            "medical_note": patient.medical_note,
+            "assignment_date": association.created_at,
+            "status": association.status,
+            "doctor_notes": association.doctor_notes
+        })
+    
+    return {
+        "patients": patients,
+        "total": total,
+        "limit": limit,
+        "offset": offset
+    }
