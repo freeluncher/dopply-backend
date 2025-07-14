@@ -50,6 +50,96 @@ coverage.xml
 # mypy
 .mypy_cache/
 .dmypy.json
+dmypy.json
+
+###############################
+# Environment Variables
+.env
+.env.local
+.env.*.local
+
+###############################
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+###############################
+# IDE & Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+
+###############################
+# OS Generated
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+###############################
+# Development & Testing Files
+test_*.py
+*_test.py
+validate_*.py
+check_*.py
+reset_*.py
+*_debug.py
+*_temp.py
+debug_*.py
+temp_*.py
+
+# Database management scripts
+reseed_*.py
+seed_*.py
+manage_*.py
+complete_*.py
+efficient_*.py
+fixed_*.py
+full_reset.py
+quick_*.py
+detailed_*.py
+final_*.py
+
+# Log files
+*.log
+logs/
+
+# Temporary files
+*.tmp
+*.temp
+temp/
+
+###############################
+# Hardware Files (ESP32/Arduino)
+*.ino
+
+###############################
+# Documentation (development)
+docs/BACKEND_*.md
+docs/*_SUMMARY.md
+docs/*_GUIDE.md
+docs/*_ERROR.md
+docs/*_ISSUE*.md
+docs/*_FIX*.md
+docs/*_COMPLETE.md
+
+###############################
+# Backup & Versions
+*_backup/
+versions_backup/
+*.bak
+
+###############################
+# Tools
+*.jar
+*.ps1
+.mypy_cache/
+.dmypy.json
 
 # VSCode
 .vscode/
