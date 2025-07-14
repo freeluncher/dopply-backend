@@ -1,17 +1,17 @@
-# Schemas untuk Fetal Monitoring System
+# NEW Schemas untuk ESP32 Fetal Monitoring System - SIMPLIFIED
 from pydantic import BaseModel, validator
-from typing import List, Optional, Union
-from datetime import datetime, date
+from typing import List, Optional, Dict, Any
+from datetime import datetime
 from enum import Enum
 
-# Enums for validation
+# Basic enums
 class MonitoringTypeEnum(str, Enum):
-    clinic = "clinic"
-    home = "home"
+    doctor = "doctor"  # Monitoring oleh dokter
+    patient = "patient"  # Monitoring mandiri pasien
 
-class FetalClassificationEnum(str, Enum):
+class ClassificationEnum(str, Enum):
     normal = "normal"
-    bradycardia = "bradycardia"
+    bradycardia = "bradycardia" 
     tachycardia = "tachycardia"
     irregular = "irregular"
 
@@ -20,87 +20,12 @@ class RiskLevelEnum(str, Enum):
     medium = "medium"
     high = "high"
 
-class OverallClassificationEnum(str, Enum):
-    normal = "normal"
-    concerning = "concerning"
-    abnormal = "abnormal"
-
-# Request/Response Schemas
-class FetalHeartRateReadingIn(BaseModel):
-    timestamp: datetime
-    bpm: int
-    signal_quality: Optional[float] = None
-    classification: FetalClassificationEnum
-
-    @validator('bpm')
-    def validate_bpm(cls, v):
-        if not 0 <= v <= 500:
-            raise ValueError('BPM must be between 0 and 500')
-        return v
-
-    @validator('signal_quality')
-    def validate_signal_quality(cls, v):
-        if v is not None and not 0.0 <= v <= 1.0:
-            raise ValueError('Signal quality must be between 0.0 and 1.0')
-        return v
-
-class FetalHeartRateReadingOut(FetalHeartRateReadingIn):
-    id: int
-    session_id: str
-    created_at: datetime
-
-    class Config:
-        from_attributes = True
-
-class FetalMonitoringResultIn(BaseModel):
-    overall_classification: OverallClassificationEnum
-    average_bpm: float
-    baseline_variability: Optional[float] = None
-    findings: List[str] = []
-    recommendations: List[str] = []
-    risk_level: RiskLevelEnum
-
-class FetalMonitoringResultOut(FetalMonitoringResultIn):
-    id: int
-    session_id: str
-    created_at: datetime
-
-    class Config:
-        from_attributes = True
-
-class FetalMonitoringSessionIn(BaseModel):
-    id: str
-    patient_id: Optional[int] = None
-    doctor_id: Optional[int] = None
-    monitoring_type: MonitoringTypeEnum
-    gestational_age: int
-    start_time: datetime
-    end_time: Optional[datetime] = None
-    readings: List[FetalHeartRateReadingIn] = []
-    notes: Optional[str] = None
-    doctor_notes: Optional[str] = None
-    shared_with_doctor: bool = False
-    result: Optional[FetalMonitoringResultIn] = None
-
-    @validator('gestational_age')
-    def validate_gestational_age(cls, v):
-        if not 1 <= v <= 42:
-            raise ValueError('Gestational age must be between 1 and 42 weeks')
-        return v
-
-    @validator('id')
-    def validate_id(cls, v):
-        if not v or len(v.strip()) == 0:
-            raise ValueError('Session ID cannot be empty')
-        return v
-
-# Simplified schema for saving to records table
-class FetalMonitoringSaveRequest(BaseModel):
+# NEW: ESP32 Monitoring Request
+class ESP32MonitoringRequest(BaseModel):
     patient_id: int
-    fhr_data: Union[List[int], List[dict]]  # BPM data (simple integers or time-indexed objects)
     gestational_age: int
-    maternal_age: Optional[int] = 28
-    classification: Optional[str] = None
+    bpm_readings: List[int]  # Raw BPM data dari ESP32
+    monitoring_duration: Optional[float] = None  # dalam menit
     notes: Optional[str] = None
     
     @validator('gestational_age')
@@ -108,292 +33,100 @@ class FetalMonitoringSaveRequest(BaseModel):
         if not 1 <= v <= 42:
             raise ValueError('Gestational age must be between 1 and 42 weeks')
         return v
+    
+    @validator('bpm_readings')
+    def validate_bpm_readings(cls, v):
+        if not v:
+            raise ValueError('BPM readings cannot be empty')
+        for bpm in v:
+            if not 0 <= bpm <= 300:
+                raise ValueError('BPM values must be between 0 and 300')
+        return v
 
-class FetalMonitoringSaveResponse(BaseModel):
+# NEW: Classification Result
+class MonitoringClassificationResult(BaseModel):
+    classification: ClassificationEnum
+    average_bpm: float
+    risk_level: RiskLevelEnum  
+    recommendations: List[str]
+    variability: float
+    min_bpm: int
+    max_bpm: int
+    total_readings: int
+    is_irregular: bool
+    normal_range: Dict[str, int]
+
+# NEW: ESP32 Monitoring Response
+class ESP32MonitoringResponse(BaseModel):
     success: bool
     message: str
     record_id: int
-    patient_id: int
-    source: str  # "clinic" or "self"
-    monitoring_type: MonitoringTypeEnum
-    gestational_age: int
-    start_time: datetime
-    end_time: Optional[datetime]
-    notes: Optional[str]
-    doctor_notes: Optional[str]
-    shared_with_doctor: bool
-    created_at: datetime
-    updated_at: datetime
-    readings: List[FetalHeartRateReadingOut] = []
-    result: Optional[FetalMonitoringResultOut] = None
+    classification_result: MonitoringClassificationResult
 
-    class Config:
-        from_attributes = True
-
-class PregnancyInfoIn(BaseModel):
-    gestational_age: int
-    last_menstrual_period: Optional[date] = None
-    expected_due_date: Optional[date] = None
-    is_high_risk: bool = False
-    complications: List[str] = []
-
-    @validator('gestational_age')
-    def validate_gestational_age(cls, v):
-        if not 1 <= v <= 42:
-            raise ValueError('Gestational age must be between 1 and 42 weeks')
-        return v
-
-class PregnancyInfoOut(PregnancyInfoIn):
+# NEW: Monitoring History
+class MonitoringRecord(BaseModel):
     id: int
     patient_id: int
-    created_at: datetime
-    updated_at: datetime
-
-    class Config:
-        from_attributes = True
-
-# Classification request/response
-class FetalBPMClassificationRequest(BaseModel):
-    bpm: Optional[int] = None  # For single BPM
-    gestational_age: int
-    readings: List[FetalHeartRateReadingIn] = []
-    monitoring_type: Optional[str] = "clinic"  # Accept any string for backward compatibility
-
-    @validator('gestational_age')
-    def validate_gestational_age(cls, v):
-        if not 1 <= v <= 42:
-            raise ValueError('Gestational age must be between 1 and 42 weeks')
-        return v
-
-    @validator('monitoring_type')
-    def validate_monitoring_type(cls, v):
-        # Allow legacy values and map them to valid ones
-        if v in ["fetal", "clinic", "home"]:
-            return "clinic" if v == "fetal" else v
-        return "clinic"  # Default fallback
-
-    def get_bpm_values(self) -> List[int]:
-        """Extract BPM values from readings or single BPM"""
-        if self.readings:
-            return [reading.bpm for reading in self.readings]
-        elif self.bpm is not None:
-            return [self.bpm]
-        else:
-            raise ValueError("Either bpm or readings must be provided")
-
-class FetalBPMClassificationResponse(BaseModel):
-    overall_classification: OverallClassificationEnum
-    average_bpm: float
-    baseline_variability: float
-    findings: List[str]
-    recommendations: List[str]
-    risk_level: RiskLevelEnum
-
-class FetalHeartRateDataPoint(BaseModel):
-    timestamp: datetime
-    bpm: int
-    signal_quality: Optional[float] = None
-
-    @validator('bpm')
-    def validate_bpm(cls, v):
-        if not 0 <= v <= 500:
-            raise ValueError('BPM must be between 0 and 500')
-        return v
-
-    @validator('signal_quality')
-    def validate_signal_quality(cls, v):
-        if v is not None and not 0.0 <= v <= 1.0:
-            raise ValueError('Signal quality must be between 0.0 and 1.0')
-        return v
-
-class FetalClassificationRequest(BaseModel):
-    fhr_data: Union[List[int], List[FetalHeartRateDataPoint]]
-    gestational_age: int
-    maternal_age: Optional[int] = 28  # Default sesuai frontend
-    duration_minutes: Optional[int] = None
-
-    @validator('gestational_age')
-    def validate_gestational_age(cls, v):
-        if not 1 <= v <= 42:
-            raise ValueError('Gestational age must be between 1 and 42 weeks')
-        return v
-
-    @validator('maternal_age')
-    def validate_maternal_age(cls, v):
-        if v is not None and not 15 <= v <= 50:
-            raise ValueError('Maternal age must be between 15 and 50 years')
-        return v
-
-    @validator('fhr_data', pre=True)
-    def validate_and_convert_fhr_data(cls, v):
-        if not v or len(v) == 0:
-            raise ValueError('FHR data cannot be empty')
-        
-        # Jika data adalah list of integers, convert ke format yang diharapkan
-        if isinstance(v, list) and v:
-            if isinstance(v[0], int):
-                # Validate BPM values - allow very wide range for fetal conditions
-                # Including severe bradycardia (very low) and severe tachycardia (very high)
-                for bpm in v:
-                    if not isinstance(bpm, int) or not 0 <= bpm <= 500:
-                        raise ValueError(f'Invalid BPM value: {bpm}. Must be integer between 0 and 500')
-                # Return as is - service akan handle conversion
-                return v
-            # Jika sudah berupa objects, validate seperti biasa
-            elif isinstance(v[0], dict):
-                return v
-        return v
-
-class FetalClassificationResponse(BaseModel):
-    # Format kompatibel dengan frontend Flutter
-    classification: str  # overall_classification mapping
-    confidence: float = 0.9  # default confidence score
-    risk_factors: List[str] = []  # findings untuk kompatibilitas
-    recommendations: List[str] = []
-    
-    # Fields tambahan untuk backward compatibility
-    overall_classification: Optional[OverallClassificationEnum] = None
-    average_bpm: Optional[float] = None
-    baseline_variability: Optional[float] = None
-    findings: Optional[List[str]] = None  # alias untuk risk_factors
-    risk_level: Optional[RiskLevelEnum] = None
-
-    class Config:
-        # Allow both field names untuk backward compatibility
-        validate_by_name = True
-
-# Session management schemas
-class FetalMonitoringSessionCreate(BaseModel):
-    id: Optional[str] = None  # Support legacy id field
-    patient_id: int
-    doctor_id: Optional[int] = None  # Support legacy doctor_id
-    monitoring_type: Optional[str] = "clinic"  # Accept any string for backward compatibility
+    doctor_id: Optional[int] = None
+    monitoring_type: MonitoringTypeEnum
     gestational_age: int
     start_time: datetime
     end_time: Optional[datetime] = None
-    readings: List[FetalHeartRateReadingIn] = []
-    notes: Optional[str] = None
-    doctor_notes: Optional[str] = None
-    shared_with_doctor: Optional[bool] = False  # Support legacy field
-    result: Optional[FetalMonitoringResultIn] = None
-
-    @validator('gestational_age')
-    def validate_gestational_age(cls, v):
-        if not 1 <= v <= 42:
-            raise ValueError('Gestational age must be between 1 and 42 weeks')
-        return v
-
-    @validator('monitoring_type')
-    def validate_monitoring_type(cls, v):
-        # Allow legacy values and map them to valid ones
-        if v in ["fetal", "clinic", "home"]:
-            return "clinic" if v == "fetal" else v
-        return "clinic"  # Default fallback
-
-class FetalMonitoringSessionResponse(BaseModel):
-    id: str
-    patient_id: int
-    doctor_id: Optional[int]
-    monitoring_type: MonitoringTypeEnum
-    gestational_age: int
-    start_time: datetime
-    end_time: Optional[datetime]
-    readings: List[FetalHeartRateReadingOut] = []
-    notes: Optional[str]
-    doctor_notes: Optional[str]
-    shared_with_doctor: bool
-    result: Optional[FetalMonitoringResultOut]
+    monitoring_duration: float
+    classification: ClassificationEnum
+    average_bpm: float
+    notes: str
+    doctor_notes: str
+    shared_with_doctor: bool = False
     created_at: datetime
-    updated_at: datetime
 
-    class Config:
-        from_attributes = True
-
-class FetalMonitoringSessionList(BaseModel):
-    sessions: List[FetalMonitoringSessionResponse]
+class MonitoringHistoryResponse(BaseModel):
+    success: bool
+    data: List[MonitoringRecord]
     total_count: int
-    skip: int
-    limit: int
+    current_page: int
+    total_pages: int
 
-# Pregnancy info schemas
-class PregnancyInfoCreate(BaseModel):
-    patient_id: int
-    gestational_age: int
-    last_menstrual_period: Optional[date] = None
-    expected_due_date: Optional[date] = None
-    is_high_risk: bool = False
-    complications: List[str] = []
-
-    @validator('gestational_age')
-    def validate_gestational_age(cls, v):
-        if not 1 <= v <= 42:
-            raise ValueError('Gestational age must be between 1 and 42 weeks')
-        return v
-
-class PregnancyInfoUpdate(BaseModel):
-    gestational_age: Optional[int] = None
-    last_menstrual_period: Optional[date] = None
-    expected_due_date: Optional[date] = None
-    is_high_risk: Optional[bool] = None
-    complications: Optional[List[str]] = None
-
-    @validator('gestational_age')
-    def validate_gestational_age(cls, v):
-        if v is not None and not 1 <= v <= 42:
-            raise ValueError('Gestational age must be between 1 and 42 weeks')
-        return v
-
-class PregnancyInfoResponse(BaseModel):
-    id: int
-    patient_id: int
-    gestational_age: int
-    last_menstrual_period: Optional[date]
-    expected_due_date: Optional[date]
-    is_high_risk: bool
-    complications: List[str]
-    created_at: datetime
-    updated_at: datetime
-
-    class Config:
-        from_attributes = True
-
-# Session list request/response
-class FetalSessionListRequest(BaseModel):
-    patient_id: Optional[int] = None
-    doctor_id: Optional[int] = None
-    monitoring_type: Optional[MonitoringTypeEnum] = None
-    limit: int = 10
-    offset: int = 0
-
-    @validator('limit')
-    def validate_limit(cls, v):
-        if not 1 <= v <= 100:
-            raise ValueError('Limit must be between 1 and 100')
-        return v
-
-    @validator('offset')
-    def validate_offset(cls, v):
-        if v < 0:
-            raise ValueError('Offset must be non-negative')
-        return v
-
-class FetalSessionListResponse(BaseModel):
-    sessions: List[FetalMonitoringSessionResponse]
-    total_count: int
-    limit: int
-    offset: int
-
-# Share session request
-class ShareSessionRequest(BaseModel):
+# NEW: Share Monitoring
+class ShareMonitoringRequest(BaseModel):
+    record_id: int
     doctor_id: int
-    message: Optional[str] = None
+    notes: Optional[str] = None
 
-class ShareSessionResponse(BaseModel):
+class ShareMonitoringResponse(BaseModel):
     success: bool
     message: str
+    shared_at: datetime
 
-# Session save response
-class SessionSaveResponse(BaseModel):
-    id: str
-    message: str
-    created_at: datetime
+# NEW: Assigned Patients
+class AssignedPatient(BaseModel):
+    patient_id: int
+    patient_name: str
+    assigned_date: str
+    status: str
+    contact_info: str
+
+class AssignedPatientsResponse(BaseModel):
+    success: bool
+    patients: List[AssignedPatient]
+
+# KEEP: BPM Classification for backward compatibility
+class FetalBPMClassificationRequest(BaseModel):
+    bpm_readings: List[int]
+    gestational_age: int
+    
+    @validator('gestational_age')
+    def validate_gestational_age(cls, v):
+        if not 1 <= v <= 42:
+            raise ValueError('Gestational age must be between 1 and 42 weeks')
+        return v
+    
+    @validator('bpm_readings')
+    def validate_bpm_readings(cls, v):
+        if not v:
+            raise ValueError('BPM readings cannot be empty')
+        return v
+
+class FetalBPMClassificationResponse(BaseModel):
+    success: bool
+    data: Dict[str, Any]

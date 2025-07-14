@@ -421,3 +421,163 @@ class FetalMonitoringService:
             "created_at": pregnancy_info.created_at,
             "updated_at": pregnancy_info.updated_at
         }
+    
+    # =====================================
+    # NEW ESP32 MONITORING METHODS
+    # =====================================
+
+    @staticmethod
+    def process_esp32_monitoring(db, request, user_id: int, user_role: str) -> Dict[str, Any]:
+        """Process ESP32 monitoring data and save to records table"""
+        from app.models.medical import Record, Patient
+        from app.core.time_utils import get_local_now
+        
+        # Validate patient exists
+        patient = db.query(Patient).filter(Patient.id == request.patient_id).first()
+        if not patient:
+            raise ValueError("Patient not found")
+        
+        # Classify BPM data
+        classification_result = FetalMonitoringService.classify_fetal_bpm(
+            request.bpm_readings, 
+            request.gestational_age
+        )
+        
+        # Calculate monitoring duration
+        duration = request.monitoring_duration or (len(request.bpm_readings) / 60.0)  # Assume 1 reading per second
+        
+        # Create record
+        record = Record(
+            patient_id=request.patient_id,
+            start_time=get_local_now(),
+            end_time=get_local_now(),
+            monitoring_duration=duration,
+            heart_rate_data=json.dumps(request.bpm_readings),
+            classification=classification_result['overall_classification'],
+            notes=request.notes or "",
+            doctor_notes="",
+            gestational_age=request.gestational_age,
+            created_by=user_id
+        )
+        
+        db.add(record)
+        db.commit()
+        db.refresh(record)
+        
+        return {
+            "record_id": record.id,
+            "classification_result": classification_result
+        }
+
+    @staticmethod
+    def get_monitoring_history_new(db, patient_id: Optional[int] = None, doctor_id: Optional[int] = None, 
+                          user_role: str = "patient", skip: int = 0, limit: int = 20) -> Dict[str, Any]:
+        """Get monitoring history from records table with role-based access"""
+        from app.models.medical import Record, Patient, User
+        
+        query = db.query(Record).join(Patient)
+        
+        # Role-based filtering
+        if user_role == "patient" and patient_id:
+            query = query.filter(Record.patient_id == patient_id)
+        elif user_role == "doctor" and doctor_id:
+            # Doctor can see records of their assigned patients
+            from app.models.medical import DoctorPatientAssociation
+            assigned_patient_ids = db.query(DoctorPatientAssociation.patient_id).filter(
+                DoctorPatientAssociation.doctor_id == doctor_id
+            ).subquery()
+            query = query.filter(Record.patient_id.in_(assigned_patient_ids))
+        
+        total_count = query.count()
+        records = query.order_by(Record.start_time.desc()).offset(skip).limit(limit).all()
+        
+        record_list = []
+        for record in records:
+            patient = db.query(Patient).filter(Patient.id == record.patient_id).first()
+            record_list.append({
+                "id": record.id,
+                "patient_id": record.patient_id,
+                "patient_name": patient.name if patient else "Unknown",
+                "doctor_id": record.created_by,
+                "monitoring_type": "doctor" if user_role == "doctor" else "patient",
+                "gestational_age": record.gestational_age,
+                "start_time": record.start_time,
+                "end_time": record.end_time,
+                "monitoring_duration": record.monitoring_duration,
+                "classification": record.classification,
+                "average_bpm": 0.0,  # Calculate from heart_rate_data if needed
+                "notes": record.notes,
+                "doctor_notes": record.doctor_notes,
+                "shared_with_doctor": bool(record.shared_with),
+                "created_at": record.start_time
+            })
+        
+        return {
+            "records": record_list,
+            "total_count": total_count,
+            "current_page": (skip // limit) + 1 if limit > 0 else 1,
+            "total_pages": (total_count + limit - 1) // limit if limit > 0 else 1
+        }
+
+    @staticmethod
+    def share_monitoring_with_doctor_new(db, record_id: int, doctor_id: int, patient_id: int, notes: Optional[str] = None) -> Dict[str, Any]:
+        """Share monitoring record with doctor"""
+        from app.models.medical import Record, User, Patient
+        from app.core.time_utils import get_local_now
+        
+        # Validate record ownership
+        record = db.query(Record).filter(
+            Record.id == record_id,
+            Record.patient_id == patient_id
+        ).first()
+        
+        if not record:
+            raise ValueError("Record not found or access denied")
+        
+        # Validate doctor
+        doctor = db.query(User).filter(User.id == doctor_id, User.role == "doctor").first()
+        if not doctor:
+            raise ValueError("Doctor not found")
+        
+        # Update record with sharing info
+        sharing_note = f"Shared with Dr. {doctor.name} on {get_local_now().strftime('%Y-%m-%d %H:%M')}"
+        if notes:
+            sharing_note += f" - Patient notes: {notes}"
+        
+        existing_notes = record.doctor_notes or ""
+        record.doctor_notes = f"{existing_notes}\n{sharing_note}".strip()
+        record.shared_with = doctor_id
+        
+        db.commit()
+        
+        return {
+            "message": f"Record shared with Dr. {doctor.name}",
+            "doctor_name": doctor.name,
+            "shared_at": get_local_now()
+        }
+
+    @staticmethod
+    def get_doctor_assigned_patients(db, doctor_id: int) -> List[Dict[str, Any]]:
+        """Get patients assigned to doctor for monitoring selection"""
+        from app.models.medical import DoctorPatientAssociation, Patient, User
+        
+        query = db.query(DoctorPatientAssociation).join(Patient).filter(
+            DoctorPatientAssociation.doctor_id == doctor_id
+        )
+        
+        assignments = query.all()
+        
+        patient_list = []
+        for assignment in assignments:
+            patient = db.query(Patient).filter(Patient.id == assignment.patient_id).first()
+            if patient:
+                user = db.query(User).filter(User.id == patient.patient_id).first()
+                patient_list.append({
+                    "patient_id": patient.id,
+                    "patient_name": patient.name,
+                    "assigned_date": assignment.assigned_at.strftime("%Y-%m-%d"),
+                    "status": "active",
+                    "contact_info": user.email if user else "No contact info"
+                })
+        
+        return patient_list
