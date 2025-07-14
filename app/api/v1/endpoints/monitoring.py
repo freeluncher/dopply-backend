@@ -202,7 +202,7 @@ def save_monitoring_record(req: MonitoringRecordRequest, db: Session = Depends(g
 def save_patient_monitoring_result(req: PatientMonitoringRequest, db: Session = Depends(get_db), user: User = Depends(get_current_doctor_or_patient)):
     """Save monitoring result submitted by patient."""
     # Validasi: pasien hanya boleh simpan hasil untuk dirinya sendiri
-    patient = db.query(Patient).filter(Patient.patient_id == user.id).first()
+    patient = db.query(Patient).filter(Patient.user_id == user.id).first()
     if not patient:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Patient not found or not authorized")
     if req.patient_id != patient.id:
