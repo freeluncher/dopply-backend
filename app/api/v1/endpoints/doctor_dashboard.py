@@ -486,9 +486,9 @@ def get_doctor_patients(
             "birth_date": patient.birth_date,
             "address": patient.address,
             "medical_note": patient.medical_note,
-            "assignment_date": association.created_at,
+            "assignment_date": association.assigned_at,  # Changed from created_at to assigned_at
             "status": association.status,
-            "doctor_notes": association.doctor_notes
+            "doctor_notes": association.note  # Changed from doctor_notes to note
         })
     
     return {
