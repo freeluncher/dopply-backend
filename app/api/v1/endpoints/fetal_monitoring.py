@@ -21,7 +21,9 @@ from app.schemas.fetal_monitoring import (
     ShareSessionResponse,
     PregnancyInfoCreate,
     PregnancyInfoUpdate,
-    PregnancyInfoResponse
+    PregnancyInfoResponse,
+    FetalBPMClassificationRequest,
+    FetalBPMClassificationResponse
 )
 from app.core.security import verify_jwt_token
 
@@ -381,3 +383,48 @@ def get_available_doctors(
         return {"doctors": result}
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to retrieve doctors list")
+
+# --- Backward Compatibility Aliases ---
+
+@router.post("/fetal/classify_bpm", response_model=FetalClassificationResponse, tags=["Fetal Monitoring - Legacy"], 
+             summary="🔄 Legacy BPM Classification (Alias)",
+             description="Legacy endpoint for backward compatibility. Use /fetal/classify instead.")
+def classify_bpm_legacy(
+    request: FetalBPMClassificationRequest,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_doctor_or_patient)
+):
+    """
+    Legacy endpoint for BPM classification. Redirects to new classify endpoint.
+    """
+    try:
+        # Convert legacy request to new format
+        fhr_data = request.get_bpm_values()
+        
+        result = FetalMonitoringService.classify_fetal_heart_rate(
+            fhr_data=fhr_data,
+            gestational_age=request.gestational_age,
+            maternal_age=28,  # Default
+            duration_minutes=None
+        )
+        return FetalClassificationResponse(**result)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Classification failed")
+
+@router.post("/fetal/monitoring_sessions", response_model=FetalMonitoringSessionResponse, status_code=status.HTTP_201_CREATED, tags=["Fetal Monitoring - Legacy"],
+             summary="🔄 Legacy Monitoring Sessions (Alias)", 
+             description="Legacy endpoint for backward compatibility. Use /fetal/sessions instead.")
+def save_monitoring_session_legacy(
+    request: FetalMonitoringSessionCreate,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_doctor_or_patient)
+):
+    """
+    Legacy endpoint for monitoring sessions. Redirects to new sessions endpoint.
+    """
+    # Delegate to the new endpoint
+    return save_fetal_monitoring_session(request, db, user)
+
+# --- Main Endpoints ---
