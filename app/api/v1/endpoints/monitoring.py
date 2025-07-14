@@ -201,11 +201,30 @@ def save_monitoring_record(req: MonitoringRecordRequest, db: Session = Depends(g
 @router.post("/patient/monitoring", status_code=status.HTTP_201_CREATED, tags=["Medical Records"])
 def save_patient_monitoring_result(req: PatientMonitoringRequest, db: Session = Depends(get_db), user: User = Depends(get_current_doctor_or_patient)):
     """Save monitoring result submitted by patient."""
-    # Validasi: pasien hanya boleh simpan hasil untuk dirinya sendiri
+    import logging
+    logger = logging.getLogger("uvicorn")
+    
+    # Debug logging
+    logger.info(f"[PATIENT_MONITORING] User ID: {user.id}, Request patient_id: {req.patient_id}")
+    
+    # Find patient record for the authenticated user
     patient = db.query(Patient).filter(Patient.user_id == user.id).first()
+    
+    # If no patient record exists, create one automatically
     if not patient:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Patient not found or not authorized")
-    if req.patient_id != patient.id:
+        logger.info(f"[PATIENT_MONITORING] Creating patient record for user_id: {user.id}")
+        patient = Patient(user_id=user.id)
+        db.add(patient)
+        db.commit()
+        db.refresh(patient)
+        logger.info(f"[PATIENT_MONITORING] Created patient - ID: {patient.id}, user_id: {patient.user_id}")
+    
+    logger.info(f"[PATIENT_MONITORING] Using patient - ID: {patient.id}, user_id: {patient.user_id}")
+    
+    # For security: only allow the authenticated user to save monitoring data
+    # Accept the request if patient_id matches either the user_id or the internal patient ID
+    if req.patient_id != patient.user_id and req.patient_id != patient.id:
+        logger.warning(f"[PATIENT_MONITORING] Authorization failed - req.patient_id: {req.patient_id}, user.id: {user.id}, patient.id: {patient.id}")
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You can only save monitoring for yourself.")
     # Gunakan zona waktu lokal Indonesia (WIB)
     start_time = get_local_naive_now()
