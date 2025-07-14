@@ -11,7 +11,7 @@ def get_all_records_for_user(db: Session, user) -> list[dict]:
     if user.role.value == "doctor":
         records = db.query(Record).filter(Record.doctor_id == user.id).all()
     elif user.role.value == "patient":
-        patient = db.query(Patient).filter(Patient.patient_id == user.id).first()
+        patient = db.query(Patient).filter(Patient.user_id == user.id).first()
         if patient:
             records = db.query(Record).filter(Record.patient_id == patient.id).all()
         else:

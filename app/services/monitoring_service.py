@@ -77,8 +77,13 @@ class MonitoringService:
     @staticmethod
     def save_monitoring_record(db: Session, req: Any) -> Dict[str, Any]:
         logger = logging.getLogger("uvicorn")
-        logger.info(f"[MONITORING_RECORD] patient_id={req.patient_id}, doctor_id={req.doctor_id}, start_time={req.start_time}, end_time={req.end_time}, bpm_data={req.bpm_data}, result={req.result}, classification={req.classification}, doctor_note={req.doctor_note}")
-        patient = db.query(Patient).filter(Patient.patient_id == req.patient_id).first()
+        logger.info(f"[MONITORING_RECORD] patient_id={req.patient_id}, doctor_id={req.doctor_id}, start_time={req.start_time}, end_time={req.end_time}, bmp_data={req.bpm_data}, result={req.result}, classification={req.classification}, doctor_note={req.doctor_note}")
+        
+        # Try to find patient by id first, then by user_id for compatibility
+        patient = db.query(Patient).filter(Patient.id == req.patient_id).first()
+        if not patient:
+            patient = db.query(Patient).filter(Patient.user_id == req.patient_id).first()
+        
         if not patient:
             logger.warning(f"[MONITORING_RECORD] Patient not found: {req.patient_id}")
             raise ValueError("Patient not found")

@@ -12,11 +12,11 @@ class PatientListService:
             return []
         query = db.query(Patient).filter(Patient.id.in_(patient_ids))
         if search:
-            query = query.join(User, Patient.patient_id == User.id).filter(User.name.ilike(f"%{search}%"))
+            query = query.join(User, Patient.user_id == User.id).filter(User.name.ilike(f"%{search}%"))
         patients = query.all()
         result = []
         for patient in patients:
-            user = db.query(User).filter(User.id == patient.patient_id).first()
+            user = db.query(User).filter(User.id == patient.user_id).first()
             result.append({
                 "patient_id": patient.id,
                 "name": user.name if user else None,

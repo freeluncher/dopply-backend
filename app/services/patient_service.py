@@ -6,16 +6,16 @@ from typing import List, Optional
 
 def get_patients(db: Session) -> List[Patient]:
     # Only return patients with a valid linked User (with name and email)
-    return db.query(Patient).join(User, Patient.patient_id == User.id).filter(User.name != None, User.email != None).all()
+    return db.query(Patient).join(User, Patient.user_id == User.id).filter(User.name != None, User.email != None).all()
 
 def get_patient(db: Session, patient_id: int) -> Optional[Patient]:
-    return db.query(Patient).filter(Patient.patient_id == patient_id).first()
+    return db.query(Patient).filter(Patient.id == patient_id).first()
 
 def update_patient(db: Session, patient_id: int, patient_data: PatientUpdate) -> Optional[Patient]:
-    patient = db.query(Patient).filter(Patient.patient_id == patient_id).first()
+    patient = db.query(Patient).filter(Patient.id == patient_id).first()
     if not patient:
         return None
-    user = db.query(User).filter(User.id == patient.patient_id).first()
+    user = db.query(User).filter(User.id == patient.user_id).first()
     if patient_data.name:
         user.name = patient_data.name
     if patient_data.email:
@@ -33,10 +33,10 @@ def update_patient(db: Session, patient_id: int, patient_data: PatientUpdate) ->
     return patient
 
 def delete_patient(db: Session, patient_id: int) -> bool:
-    patient = db.query(Patient).filter(Patient.patient_id == patient_id).first()
+    patient = db.query(Patient).filter(Patient.id == patient_id).first()
     if not patient:
         return False
-    user = db.query(User).filter(User.id == patient.patient_id).first()
+    user = db.query(User).filter(User.id == patient.user_id).first()
     db.delete(patient)
     if user:
         db.delete(user)
@@ -78,7 +78,7 @@ def register_user_universal(db, data):
         user.password_hash = get_password_hash(data.password)
         db.commit()
         db.refresh(user)
-        patient = db.query(Patient).filter(Patient.patient_id == user.id).first()
+        patient = db.query(Patient).filter(Patient.user_id == user.id).first()
         if patient:
             if data.birth_date is not None:
                 patient.birth_date = data.birth_date

@@ -406,7 +406,7 @@ class FetalMonitoringService:
         # Check access permissions
         if user_role == "patient":
             from app.models.medical import Patient
-            patient = db.query(Patient).filter(Patient.patient_id == user_id).first()
+            patient = db.query(Patient).filter(Patient.user_id == user_id).first()
             if not patient or session.patient_id != patient.id:
                 return None
         
