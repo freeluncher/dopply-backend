@@ -360,7 +360,7 @@ class FetalSessionListRequest(BaseModel):
         return v
 
 class FetalSessionListResponse(BaseModel):
-    sessions: List[FetalMonitoringSessionOut]
+    sessions: List[FetalMonitoringSessionResponse]
     total_count: int
     limit: int
     offset: int

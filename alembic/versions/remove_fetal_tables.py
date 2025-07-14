@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 # revision identifiers
 revision = 'remove_fetal_tables'
-down_revision = None  # Update this with your latest migration
+down_revision = '692e6f2120e5'
 branch_labels = None
 depends_on = None
 
