@@ -195,19 +195,6 @@ def update_user(
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email already in use")
     return {"message": "User updated successfully"}
 
-@router.delete("/users/{user_id}", tags=["Admin Functions"])
-def delete_user(
-    user_id: int,
-    db: Session = Depends(get_db),
-    admin: User = Depends(require_admin)
-):
-    user = db.query(User).filter(User.id == user_id).first()
-    if not user:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
-    db.delete(user)
-    db.commit()
-    return {"message": "User deleted successfully"}
-
 # --- Patient CRUD Endpoints ---
 @router.get("/patients", response_model=List[PatientOut], tags=["Patient Management"])
 def read_patients(db: Session = Depends(get_db), user: User = Depends(require_admin_or_doctor)):
@@ -238,13 +225,6 @@ def update_existing_patient(patient_id: int, patient: PatientUpdate, db: Session
     if not updated:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Patient not found")
     return updated
-
-@router.delete("/patients/{patient_id}", status_code=status.HTTP_204_NO_CONTENT, tags=["Patient Management"])
-def delete_existing_patient(patient_id: int, db: Session = Depends(get_db), user: User = Depends(require_admin_or_doctor)):
-    success = delete_patient(db, patient_id)
-    if not success:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Patient not found")
-    return None
 
 @router.post("/patients", response_model=PatientOut, status_code=status.HTTP_201_CREATED, tags=["Patient Management"])
 def create_patient(patient: PatientCreate, db: Session = Depends(get_db), user: User = Depends(require_admin_or_doctor)):
@@ -325,10 +305,6 @@ def update_doctor_patient_association(
         if "not found" in msg:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=msg)
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=msg)
-
-@router.get("/doctors/{doctor_id}/patients", response_model=List[PatientOut], tags=["Doctor Dashboard"])
-def list_patients_for_doctor(doctor_id: int, db: Session = Depends(get_db), user: User = Depends(require_admin_or_doctor)):
-    return DoctorPatientService.list_patients_for_doctor(db, doctor_id)
 
 @router.delete("/doctors/{doctor_id}/unassign-patient/{patient_id}", tags=["Patient Management"])
 def unassign_patient_from_doctor(doctor_id: int, patient_id: int, db: Session = Depends(get_db), user: User = Depends(require_admin_or_doctor)):

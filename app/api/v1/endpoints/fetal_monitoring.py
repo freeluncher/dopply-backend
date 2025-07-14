@@ -322,37 +322,6 @@ def update_pregnancy_info(
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to update pregnancy information")
 
-@router.delete("/fetal/pregnancy-info/{patient_id}", status_code=status.HTTP_204_NO_CONTENT, tags=["Pregnancy Management"])
-def delete_pregnancy_info(
-    patient_id: int,
-    db: Session = Depends(get_db),
-    user: User = Depends(get_current_doctor_or_patient)
-):
-    """
-    Delete pregnancy information for a patient.
-    Patients can only delete their own info, doctors can delete their patients' info.
-    """
-    try:
-        user_role = user.role.value if hasattr(user.role, 'value') else str(user.role)
-        
-        if user_role == "patient":
-            # Patients can only delete their own info
-            patient = db.query(Patient).filter(Patient.patient_id == user.id).first()
-            if not patient or patient.id != patient_id:
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail="You can only delete your own pregnancy information"
-                )
-        
-        result = FetalMonitoringService.delete_pregnancy_info(db, patient_id)
-        if not result:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Pregnancy information not found")
-        
-    except ValueError as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to delete pregnancy information")
-
 # --- Doctor List Endpoint for Sharing ---
 
 @router.get("/fetal/doctors", tags=["Fetal Monitoring"])

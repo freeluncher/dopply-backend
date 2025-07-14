@@ -176,13 +176,13 @@ class FetalMonitoringService:
             raise ValueError("Patient not found")
         
         # Extract BPM data from readings
-        bpm_data = [reading.bpm for reading in request.readings] if request.readings else []
+        bmp_data = [reading.bpm for reading in request.readings] if request.readings else []
         
         # Classify the BPM data if available
         classification = "unclassified"
-        if bpm_data and len(bpm_data) > 0:
+        if bmp_data and len(bmp_data) > 0:
             try:
-                classification_result = FetalMonitoringService.classify_fetal_bpm(bpm_data, request.gestational_age)
+                classification_result = FetalMonitoringService.classify_fetal_bpm(bmp_data, request.gestational_age)
                 classification = classification_result.get('overall_classification', 'unclassified')
             except Exception:
                 classification = "unclassified"
@@ -193,7 +193,7 @@ class FetalMonitoringService:
             start_time=request.start_time,
             end_time=request.end_time or get_local_now(),
             monitoring_duration=(request.end_time - request.start_time).total_seconds() / 60 if request.end_time else 0,
-            heart_rate_data=json.dumps(bpm_data) if bpm_data else "[]",
+            heart_rate_data=json.dumps(bmp_data) if bmp_data else "[]",
             classification=classification,
             notes=request.notes or "",
             doctor_notes=getattr(request, 'doctor_notes', ""),
@@ -215,12 +215,9 @@ class FetalMonitoringService:
             "end_time": record.end_time,
             "notes": record.notes,
             "doctor_notes": record.doctor_notes,
-            "shared_with_doctor": getattr(request, 'shared_with_doctor', False),
             "classification": record.classification,
-            "readings": [],  # Empty for simplified system
-            "result": None,  # Empty for simplified system
-            "created_at": record.start_time,
-            "updated_at": record.start_time
+            "heart_rate_data": json.loads(record.heart_rate_data) if record.heart_rate_data else [],
+            "created_at": record.start_time
         }
 
     @staticmethod
@@ -241,18 +238,15 @@ class FetalMonitoringService:
                 "id": str(record.id),
                 "patient_id": record.patient_id,
                 "doctor_id": record.created_by,
-                "monitoring_type": "clinic",  # Default type for simplified system
+                "monitoring_type": "manual",  # Default type for simplified system
                 "gestational_age": record.gestational_age or 0,
                 "start_time": record.start_time,
                 "end_time": record.end_time,
                 "notes": record.notes or "",
                 "doctor_notes": record.doctor_notes or "",
-                "shared_with_doctor": False,  # Default for simplified system
                 "classification": record.classification,
-                "readings": [],  # Empty for simplified system
-                "result": None,  # Empty for simplified system
-                "created_at": record.start_time,
-                "updated_at": record.start_time
+                "heart_rate_data": json.loads(record.heart_rate_data) if record.heart_rate_data else [],
+                "created_at": record.start_time
             })
         
         return {

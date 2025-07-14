@@ -3,11 +3,9 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import JSONResponse
 import logging
 from app.api.v1.endpoints import user
-from app.api.v1.endpoints import monitoring
 from app.api.v1.endpoints import fetal_monitoring
 from app.api.v1.endpoints import admin_doctor_validation
 from app.api.v1.endpoints import token_verify
-from app.api.v1.endpoints import patient_list
 from app.api.v1.endpoints import patient_crud
 from app.api.v1.endpoints import refresh
 from app.api.v1.endpoints import doctor_dashboard
@@ -162,11 +160,9 @@ app = FastAPI(
 # Include routers with tags matching Postman grouping
 app.include_router(doctor_dashboard.router, prefix="/api/v1")  # Doctor dashboard first for enhanced endpoints
 app.include_router(user.router, prefix="/api/v1")
-app.include_router(monitoring.router, prefix="/api/v1")
 app.include_router(fetal_monitoring.router, prefix="/api/v1")  # New fetal monitoring endpoints
 app.include_router(admin_doctor_validation.router, prefix="/api/v1/admin")
 app.include_router(token_verify.router, prefix="/api/v1")
-app.include_router(patient_list.router, prefix="/api/v1")
 app.include_router(patient_crud.router, prefix="/api/v1")
 app.include_router(refresh.router, prefix="/api/v1/auth")
 
