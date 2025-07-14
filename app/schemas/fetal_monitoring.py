@@ -34,8 +34,8 @@ class FetalHeartRateReadingIn(BaseModel):
 
     @validator('bpm')
     def validate_bpm(cls, v):
-        if not 30 <= v <= 400:
-            raise ValueError('BPM must be between 30 and 400')
+        if not 0 <= v <= 500:
+            raise ValueError('BPM must be between 0 and 500')
         return v
 
     @validator('signal_quality')
@@ -189,8 +189,8 @@ class FetalHeartRateDataPoint(BaseModel):
 
     @validator('bpm')
     def validate_bpm(cls, v):
-        if not 30 <= v <= 400:
-            raise ValueError('BPM must be between 30 and 400')
+        if not 0 <= v <= 500:
+            raise ValueError('BPM must be between 0 and 500')
         return v
 
     @validator('signal_quality')
@@ -225,10 +225,11 @@ class FetalClassificationRequest(BaseModel):
         # Jika data adalah list of integers, convert ke format yang diharapkan
         if isinstance(v, list) and v:
             if isinstance(v[0], int):
-                # Validate BPM values - allow wider range for fetal conditions including severe bradycardia
+                # Validate BPM values - allow very wide range for fetal conditions
+                # Including severe bradycardia (very low) and severe tachycardia (very high)
                 for bpm in v:
-                    if not isinstance(bpm, int) or not 30 <= bpm <= 400:
-                        raise ValueError(f'Invalid BPM value: {bpm}. Must be integer between 30 and 400')
+                    if not isinstance(bpm, int) or not 0 <= bpm <= 500:
+                        raise ValueError(f'Invalid BPM value: {bpm}. Must be integer between 0 and 500')
                 # Return as is - service akan handle conversion
                 return v
             # Jika sudah berupa objects, validate seperti biasa
