@@ -71,8 +71,8 @@ class Record(Base):
     created_by = Column(Integer, ForeignKey("users.id"), nullable=False)  # User yang membuat record
     
     # Relationships
-    patient = relationship("Patient", back_populates="records", foreign_keys=[patient_id])
-    doctor = relationship("User", back_populates="records_as_doctor", foreign_keys=[doctor_id])
+    patient = relationship("Patient", back_populates="records", foreign_keys=["patient_id"])
+    doctor = relationship("User", back_populates="records_as_doctor", foreign_keys=["doctor_id"])
     notifications = relationship("Notification", back_populates="record", foreign_keys=["record_id"])
 
 class NotificationStatus(enum.Enum):
