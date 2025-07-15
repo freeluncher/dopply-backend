@@ -20,19 +20,26 @@ security = HTTPBearer()
 
 def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security), db: Session = Depends(get_db)) -> User:
     """Get the current authenticated user."""
+    import logging
+    logging.basicConfig(level=logging.INFO)
+    logger = logging.getLogger("monitoring_auth")
     try:
+        logger.info(f"Authorization header: Bearer {credentials.credentials}")
         payload = verify_jwt_token(credentials.credentials)
+        logger.info(f"JWT payload: {payload}")
         user_id = payload.get("sub")
         if user_id is None:
-            raise HTTPException(status_code=401, detail="Invalid token")
-        
+            logger.error("JWT missing 'sub' field (user id)")
+            raise HTTPException(status_code=401, detail="Invalid token: missing user id (sub)")
         user = db.query(User).filter(User.id == user_id).first()
         if user is None:
+            logger.error(f"User not found for id: {user_id}")
             raise HTTPException(status_code=401, detail="User not found")
-        
+        # Optionally check if user is active (add if needed)
         return user
-    except Exception:
-        raise HTTPException(status_code=401, detail="Invalid token")
+    except Exception as e:
+        logger.error(f"JWT validation error: {e}")
+        raise HTTPException(status_code=401, detail=f"Invalid token: {e}")
 
 # 1. Submit monitoring result (patient/doctor)
 @router.post("/submit", response_model=MonitoringResponse)
@@ -122,16 +129,22 @@ async def add_patient(
     db: Session = Depends(get_db)
 ):
     """Dokter menambahkan pasien berdasarkan email"""
+    import logging
+    logging.basicConfig(level=logging.INFO)
+    logger = logging.getLogger("monitoring_add_patient")
+    logger.info(f"User role: {current_user.role.value}, user id: {current_user.id}")
     if current_user.role.value != "doctor":
+        logger.warning(f"Access denied: role={current_user.role.value}")
         raise HTTPException(status_code=403, detail="Only doctors can add patients")
-    
     try:
         result = MonitoringService.add_patient_to_doctor(
             db, current_user.id, request.patient_email, request.notes
         )
+        logger.info(f"Add patient result: {result}")
         return AddPatientResponse(**result)
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        logger.error(f"Add patient error: {e}")
+        raise HTTPException(status_code=400, detail=f"Add patient failed: {e}")
 
 # 5. Notifications
 @router.get("/notifications", response_model=NotificationListResponse)
