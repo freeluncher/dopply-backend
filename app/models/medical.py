@@ -26,8 +26,8 @@ class User(Base):
     
     # Relationships
     patients = relationship("Patient", back_populates="user")
-    records_as_doctor = relationship("Record", back_populates="doctor", foreign_keys='Record.doctor_id')
-    notifications = relationship("Notification", back_populates="to_doctor", foreign_keys='Notification.to_doctor_id')
+    records_as_doctor = relationship("Record", back_populates="doctor", foreign_keys=["Record.doctor_id"])
+    notifications = relationship("Notification", back_populates="to_doctor", foreign_keys=["Notification.to_doctor_id"])
 
 class DoctorPatientAssociation(Base):
     __tablename__ = "doctor_patient"
@@ -36,7 +36,7 @@ class DoctorPatientAssociation(Base):
     assigned_at = Column(DateTime, nullable=False, default=get_local_naive_now)
 
     doctor = relationship("User", foreign_keys=[doctor_id])
-    patient = relationship("Patient", back_populates="doctor_patient_associations")
+    patient = relationship("Patient", back_populates="doctor_patient_associations", foreign_keys=[patient_id])
 
 class Patient(Base):
     __tablename__ = "patients"
@@ -49,9 +49,9 @@ class Patient(Base):
     address = Column(String(255), nullable=True)
     medical_note = Column(Text, nullable=True)
     
-    user = relationship("User", back_populates="patients")
-    doctor_patient_associations = relationship("DoctorPatientAssociation", back_populates="patient")
-    records = relationship("Record", back_populates="patient")
+    user = relationship("User", back_populates="patients", foreign_keys=[user_id])
+    doctor_patient_associations = relationship("DoctorPatientAssociation", back_populates="patient", foreign_keys=[DoctorPatientAssociation.patient_id])
+    records = relationship("Record", back_populates="patient", foreign_keys=["Record.patient_id"])
 
 class Record(Base):
     __tablename__ = "records"
@@ -71,9 +71,9 @@ class Record(Base):
     created_by = Column(Integer, ForeignKey("users.id"), nullable=False)  # User yang membuat record
     
     # Relationships
-    patient = relationship("Patient", back_populates="records")
+    patient = relationship("Patient", back_populates="records", foreign_keys=[patient_id])
     doctor = relationship("User", back_populates="records_as_doctor", foreign_keys=[doctor_id])
-    notifications = relationship("Notification", back_populates="record")
+    notifications = relationship("Notification", back_populates="record", foreign_keys=["Notification.record_id"])
 
 class NotificationStatus(enum.Enum):
     unread = "unread"
@@ -90,6 +90,6 @@ class Notification(Base):
     created_at = Column(DateTime, nullable=False, default=get_local_naive_now)
     
     # Relationships
-    record = relationship("Record", back_populates="notifications")
+    record = relationship("Record", back_populates="notifications", foreign_keys=[record_id])
     from_patient = relationship("Patient", foreign_keys=[from_patient_id])
     to_doctor = relationship("User", back_populates="notifications", foreign_keys=[to_doctor_id])
