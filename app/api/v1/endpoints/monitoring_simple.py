@@ -80,7 +80,6 @@ async def get_monitoring_history(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Ambil riwayat monitoring berdasarkan role"""
     import logging
     logger = logging.getLogger("monitoring_history")
     logger.info(f"Accessed /monitoring/history by user_id={current_user.id}, role={current_user.role.value}, patient_id={patient_id}, skip={skip}, limit={limit}")
@@ -88,11 +87,11 @@ async def get_monitoring_history(
         result = MonitoringService.get_monitoring_history(
             db, current_user.id, current_user.role.value, patient_id, skip, limit
         )
-        logger.info(f"Monitoring history result count: {len(result.get('records', []))}")
-        return {"data": result.get("records", []), "status": 200}
+        records = result.get("records", [])
+        return {"data": records if isinstance(records, list) else [], "status": 200}
     except Exception as e:
         logger.error(f"Error in /monitoring/history: {e}")
-        return {"data": [], "status": 400, "error": str(e)}
+        return {"data": [], "status": 401, "message": str(e)}
 
 # 3. Share monitoring with doctor (patient only)
 @router.post("/share", response_model=ShareMonitoringResponse)
