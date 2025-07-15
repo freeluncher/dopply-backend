@@ -53,7 +53,14 @@ async def submit_monitoring(
         result = MonitoringService.save_monitoring_record(db, request, current_user.id)
         return MonitoringResponse(**result)
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        import logging
+        logger = logging.getLogger("monitoring_submit")
+        # If error is not serializable, convert to string
+        err_msg = str(e)
+        if hasattr(e, "args") and e.args:
+            err_msg = str(e.args[0])
+        logger.error(f"Submit monitoring error: {err_msg}")
+        raise HTTPException(status_code=400, detail=err_msg)
 
 # 2. Get monitoring history (patient/doctor)
 @router.get("/history", response_model=MonitoringHistoryResponse)
