@@ -95,6 +95,9 @@ def login_user(user: LoginRequest, db: Session = Depends(get_db)):
                 today = date.today()
                 days_diff = (today - patient.hpht).days
                 gestational_age = days_diff // 7 if days_diff >= 0 else None
+        else:
+            # Explicitly error if patient record not found
+            raise HTTPException(status_code=400, detail="Patient record not found for this user.")
         jwt_payload["gestational_age"] = gestational_age
         jwt_payload["patient_id"] = patient_id
 
@@ -107,13 +110,16 @@ def login_user(user: LoginRequest, db: Session = Depends(get_db)):
     logger = logging.getLogger("jwt_login")
     logger.info(f"JWT payload sent to frontend: {jwt_payload}")
 
-    # Return response with both tokens
-    return {
+    # Return response with both tokens, always include patient_id for patients
+    response = {
         "access_token": access_token,
         "refresh_token": refresh_token,
         "token_type": "bearer",
         **jwt_payload
     }
+    if role_value == "patient":
+        response["patient_id"] = patient_id
+    return response
 
 @router.post("/register", status_code=201,
              summary="Register User", 
