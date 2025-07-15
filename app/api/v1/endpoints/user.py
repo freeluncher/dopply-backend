@@ -1,3 +1,17 @@
+@router.get("/user/all-doctors", summary="Get all doctors", description="Return all doctors in the database.")
+def get_all_doctors(db: Session = Depends(get_db)):
+    doctors = db.query(User).filter((User.role == "doctor") | (getattr(User.role, 'value', None) == "doctor")).all()
+    result = []
+    for doctor in doctors:
+        result.append({
+            "id": doctor.id,
+            "name": doctor.name,
+            "email": doctor.email,
+            "specialization": getattr(doctor, "specialization", None),
+            "is_verified": getattr(doctor, "is_verified", None),
+            "photo_url": getattr(doctor, "photo_url", None)
+        })
+    return {"status": "success", "doctors": result}
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import Optional
