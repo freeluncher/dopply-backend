@@ -83,11 +83,11 @@ def login_user(user: LoginRequest, db: Session = Depends(get_db)):
         jwt_payload["is_valid"] = is_valid
         jwt_payload["doctor_id"] = db_user.id
 
-    # Add gestationalAge for patient
+    # Add gestational_age for patient
     if role_value == "patient":
         patient = db.query(Patient).filter(Patient.user_id == db_user.id).first()
         if patient and hasattr(patient, "gestational_age"):
-            jwt_payload["gestationalAge"] = patient.gestational_age
+            jwt_payload["gestational_age"] = patient.gestational_age
 
     # Create both tokens
     access_token = create_access_token(jwt_payload)
