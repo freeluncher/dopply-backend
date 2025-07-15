@@ -42,13 +42,19 @@ def create_refresh_token(data: dict, expires_delta: timedelta = None):
     return encoded_jwt
 
 def verify_access_token(token: str) -> Dict[str, Any]:
+    import logging
+    logger = logging.getLogger("jwt_debug")
+    logger.info(f"Raw JWT token: {token}")
     try:
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        logger.info(f"Decoded JWT payload: {payload}")
         if payload.get("type") != "access":
+            logger.error(f"JWT 'type' field is not 'access': {payload.get('type')}")
             raise JWTError("Invalid token type")
         return payload
-    except JWTError:
-        raise Exception("Invalid access token")
+    except Exception as e:
+        logger.error(f"JWT decode error: {e}")
+        raise Exception(f"Invalid access token: {e}")
 
 def verify_refresh_token(token: str) -> Dict[str, Any]:
     try:
