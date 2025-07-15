@@ -22,4 +22,14 @@ class Settings(BaseSettings):
         """Return the refresh secret key, defaulting to main SECRET_KEY if not set"""
         return self.REFRESH_SECRET_KEY or self.SECRET_KEY
 
+    def validate_jwt_config(self):
+        import logging
+        logger = logging.getLogger("jwt_config")
+        if not self.SECRET_KEY:
+            logger.error("SECRET_KEY is not set! JWT will fail.")
+        if not self.ALGORITHM:
+            logger.error("ALGORITHM is not set! JWT will fail.")
+        logger.info(f"JWT config: SECRET_KEY={self.SECRET_KEY[:6]}... ALGORITHM={self.ALGORITHM}")
+
 settings = Settings()
+settings.validate_jwt_config()
