@@ -1,3 +1,9 @@
+from pydantic import BaseModel, validator, ConfigDict
+from typing import List, Optional
+from datetime import datetime
+
+## Semua import harus di atas sebelum deklarasi class apapun
+
 class ClassifyRequest(BaseModel):
     bpm_data: List[int]
     gestational_age: int
@@ -5,10 +11,7 @@ class ClassifyRequest(BaseModel):
 class ClassifyResponse(BaseModel):
     classification: str
     average_bpm: float
-from pydantic import BaseModel, validator, ConfigDict
-from typing import List, Optional
-from datetime import datetime
-
+    
 ## Semua import harus di atas sebelum deklarasi class apapun
 # Request untuk monitoring dari frontend Flutter (setelah monitoring selesai)
 class MonitoringRequest(BaseModel):
