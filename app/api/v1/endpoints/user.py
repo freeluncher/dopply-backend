@@ -72,22 +72,27 @@ def login_user(user: LoginRequest, db: Session = Depends(get_db)):
         "role": role_value,
         "name": db_user.name,
     }
-    
+
     if hasattr(db_user, "photo_url") and db_user.photo_url:
         jwt_payload["photo_url"] = db_user.photo_url
-    
+
     # Add doctor-specific data
-    # For doctors, check verification status from User table directly
     is_valid = None
     if role_value == "doctor":
         is_valid = db_user.is_verified if db_user.is_verified is not None else False
         jwt_payload["is_valid"] = is_valid
         jwt_payload["doctor_id"] = db_user.id
-    
+
+    # Add gestationalAge for patient
+    if role_value == "patient":
+        patient = db.query(Patient).filter(Patient.user_id == db_user.id).first()
+        if patient and hasattr(patient, "gestational_age"):
+            jwt_payload["gestationalAge"] = patient.gestational_age
+
     # Create both tokens
     access_token = create_access_token(jwt_payload)
     refresh_token = create_refresh_token(jwt_payload)
-    
+
     # Return response with both tokens
     return {
         "access_token": access_token,
