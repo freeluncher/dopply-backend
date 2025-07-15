@@ -72,7 +72,7 @@ async def submit_monitoring(
         raise HTTPException(status_code=400, detail=err_msg)
 
 # 2. Get monitoring history (patient/doctor)
-@router.get("/history", response_model=MonitoringHistoryResponse)
+@router.get("/history")
 async def get_monitoring_history(
     patient_id: Optional[int] = None,
     skip: int = 0,
@@ -85,9 +85,9 @@ async def get_monitoring_history(
         result = MonitoringService.get_monitoring_history(
             db, current_user.id, current_user.role.value, patient_id, skip, limit
         )
-        return MonitoringHistoryResponse(**result)
+        return {"data": result.get("records", []), "status": 200}
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        return {"data": [], "status": 400, "error": str(e)}
 
 # 3. Share monitoring with doctor (patient only)
 @router.post("/share", response_model=ShareMonitoringResponse)
