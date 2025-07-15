@@ -1,3 +1,23 @@
+
+# ...existing code...
+
+router = APIRouter(tags=["Authentication"])
+security = HTTPBearer()
+
+# ...existing code...
+
+
+# ...existing code...
+
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+# ...existing code...
+
 @router.get("/user/all-doctors", summary="Get all doctors", description="Return all doctors in the database.")
 def get_all_doctors(db: Session = Depends(get_db)):
     doctors = db.query(User).filter((User.role == "doctor") | (getattr(User.role, 'value', None) == "doctor")).all()
