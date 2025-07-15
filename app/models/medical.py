@@ -90,6 +90,5 @@ class Notification(Base):
     created_at = Column(DateTime, nullable=False, default=get_local_naive_now)
     
     # Relationships
-    record = relationship("Record", back_populates="notifications", foreign_keys=[record_id])
-    from_patient = relationship("Patient", foreign_keys=[from_patient_id])
-    to_doctor = relationship("User", back_populates="notifications", foreign_keys=[to_doctor_id])
+    record = relationship("Record", back_populates="notifications", foreign_keys=["record_id"])
+    to_doctor = relationship("User", back_populates="notifications", foreign_keys=["to_doctor_id"])
