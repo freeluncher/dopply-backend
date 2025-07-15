@@ -1,11 +1,3 @@
-from app.schemas.fetal_monitoring import ClassifyRequest, ClassifyResponse
-# Endpoint klasifikasi BPM tanpa simpan ke database
-@router.post("/classify", response_model=ClassifyResponse)
-async def classify_monitoring(request: ClassifyRequest):
-    """Klasifikasi BPM tanpa simpan ke database"""
-    classification = MonitoringService.classify_bpm(request.bpm_data, request.gestational_age)
-    average_bpm = sum(request.bpm_data) / len(request.bpm_data) if request.bpm_data else 0
-    return ClassifyResponse(classification=classification, average_bpm=average_bpm)
 from fastapi import APIRouter, HTTPException, Depends, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
@@ -19,12 +11,21 @@ from app.schemas.fetal_monitoring import (
     ShareMonitoringRequest, ShareMonitoringResponse,
     MonitoringHistoryResponse, AddPatientRequest, AddPatientResponse,
     PatientListResponse, NotificationListResponse,
-    DoctorVerificationRequest, DoctorVerificationResponse
+    DoctorVerificationRequest, DoctorVerificationResponse,
+    ClassifyRequest, ClassifyResponse
 )
 from app.core.security import verify_jwt_token
 
 router = APIRouter(prefix="/monitoring", tags=["Monitoring"])
 security = HTTPBearer()
+
+# Endpoint klasifikasi BPM tanpa simpan ke database
+@router.post("/classify", response_model=ClassifyResponse)
+async def classify_monitoring(request: ClassifyRequest):
+    """Klasifikasi BPM tanpa simpan ke database"""
+    classification = MonitoringService.classify_bpm(request.bpm_data, request.gestational_age)
+    average_bpm = sum(request.bpm_data) / len(request.bpm_data) if request.bpm_data else 0
+    return ClassifyResponse(classification=classification, average_bpm=average_bpm)
 
 def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security), db: Session = Depends(get_db)) -> User:
     """Get the current authenticated user."""
