@@ -1,3 +1,10 @@
+class ClassifyRequest(BaseModel):
+    bpm_data: List[int]
+    gestational_age: int
+
+class ClassifyResponse(BaseModel):
+    classification: str
+    average_bpm: float
 from pydantic import BaseModel, validator, ConfigDict
 from typing import List, Optional
 from datetime import datetime
