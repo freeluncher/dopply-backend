@@ -49,7 +49,7 @@ class Patient(Base):
     address = Column(String(255), nullable=True)
     medical_note = Column(Text, nullable=True)
     
-    user = relationship("User", back_populates="patients", foreign_keys=[user_id])
+    user = relationship("User", back_populates="patients", foreign_keys=[Patient.user_id])
     doctor_patient_associations = relationship("DoctorPatientAssociation", back_populates="patient", foreign_keys=["patient_id"])
     records = relationship("Record", back_populates="patient", foreign_keys=["patient_id"])
 
