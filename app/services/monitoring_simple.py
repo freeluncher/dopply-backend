@@ -45,7 +45,7 @@ class MonitoringService:
             patient_id=request.patient_id,
             start_time=request.start_time,
             end_time=request.end_time or get_local_now(),
-            heart_rate_data=json.dumps(request.bpm_data),
+            bpm_data=request.bpm_data,
             classification=classification,
             gestational_age=request.gestational_age,
             notes=request.notes or "",
@@ -106,9 +106,11 @@ class MonitoringService:
             
             # Hitung average BPM
             average_bpm = 0.0
-            if record.heart_rate_data:
+            if record.bpm_data:
                 try:
-                    bpm_data = json.loads(record.heart_rate_data) if isinstance(record.heart_rate_data, str) else record.heart_rate_data
+                    bpm_data = record.bpm_data
+                    if isinstance(bpm_data, str):
+                        bpm_data = json.loads(bpm_data)
                     if isinstance(bpm_data, list) and bpm_data:
                         average_bpm = sum(bpm_data) / len(bpm_data)
                 except:
