@@ -9,6 +9,7 @@ from pydantic import BaseModel, validator, ConfigDict
 from typing import List, Optional
 from datetime import datetime
 
+## Semua import harus di atas sebelum deklarasi class apapun
 # Request untuk monitoring dari frontend Flutter (setelah monitoring selesai)
 class MonitoringRequest(BaseModel):
     patient_id: int
