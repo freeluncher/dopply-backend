@@ -184,3 +184,7 @@ def register_user(user: UserRegister, db: Session = Depends(get_db)):
         if "Email sudah digunakan" in error_message:
             raise HTTPException(status_code=400, detail="Email already registered. Please use a different email or activate your account if pre-registered.")
         raise HTTPException(status_code=400, detail=error_message)
+
+@router.post("/auth/logout", summary="Logout User", description="Logout user (frontend only, no backend token blacklist)")
+def logout_user():
+    return {"message": "Logout successful"}
