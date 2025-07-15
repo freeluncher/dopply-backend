@@ -10,58 +10,6 @@ from app.db.session import SessionLocal
 from app.core.security import verify_password, get_password_hash, create_access_token, create_refresh_token, verify_jwt_token
 from datetime import timedelta
 
-router = APIRouter(tags=["Authentication"])
-security = HTTPBearer()
-
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-
-@router.get("/user/all-doctors", summary="Get all doctors", description="Return all doctors in the database.")
-def get_all_doctors(db: Session = Depends(get_db)):
-    doctors = db.query(User).filter((User.role == "doctor") | (getattr(User.role, 'value', None) == "doctor")).all()
-    result = []
-    for doctor in doctors:
-        result.append({
-            "id": doctor.id,
-            "name": doctor.name,
-            "email": doctor.email,
-            "specialization": getattr(doctor, "specialization", None),
-            "is_verified": getattr(doctor, "is_verified", None),
-            "photo_url": getattr(doctor, "photo_url", None)
-        })
-    return {"status": "success", "doctors": result}
-# Endpoint: Get all doctors
-@router.get("/user/all-doctors", summary="Get all doctors", description="Return all doctors in the database.")
-def get_all_doctors(db: Session = Depends(get_db)):
-    doctors = db.query(User).filter((User.role == "doctor") | (getattr(User.role, 'value', None) == "doctor")).all()
-    result = []
-    for doctor in doctors:
-        result.append({
-            "id": doctor.id,
-            "name": doctor.name,
-            "email": doctor.email,
-            "specialization": getattr(doctor, "specialization", None),
-            "is_verified": getattr(doctor, "is_verified", None),
-            "photo_url": getattr(doctor, "photo_url", None)
-        })
-    return {"status": "success", "doctors": result}
-
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
-from typing import Optional
-from fastapi.responses import JSONResponse
-from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from app.schemas.user import UserRegister, UserOut, LoginRequest
-from app.schemas.refresh import LoginResponse
-from app.models.medical import User, Patient
-from app.db.session import SessionLocal
-from app.core.security import verify_password, get_password_hash, create_access_token, create_refresh_token, verify_jwt_token
-from datetime import timedelta
-
 
 router = APIRouter(tags=["Authentication"])
 security = HTTPBearer()
@@ -250,3 +198,19 @@ def register_user(user: UserRegister, db: Session = Depends(get_db)):
 @router.post("/auth/logout", summary="Logout User", description="Logout user (frontend only, no backend token blacklist)")
 def logout_user():
     return {"message": "Logout successful"}
+
+@router.get("/user/all-doctors", summary="Get all doctors", description="Return all doctors in the database.")
+def get_all_doctors(db: Session = Depends(get_db)):
+    doctors = db.query(User).filter((User.role == "doctor") | (getattr(User.role, 'value', None) == "doctor")).all()
+    result = []
+    for doctor in doctors:
+        result.append({
+            "id": doctor.id,
+            "name": doctor.name,
+            "email": doctor.email,
+            "specialization": getattr(doctor, "specialization", None),
+            "is_verified": getattr(doctor, "is_verified", None),
+            "photo_url": getattr(doctor, "photo_url", None)
+        })
+    return {"status": "success", "doctors": result}
+
