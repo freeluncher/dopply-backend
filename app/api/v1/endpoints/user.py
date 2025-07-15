@@ -1,5 +1,4 @@
 
-
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import Optional
@@ -12,11 +11,6 @@ from app.db.session import SessionLocal
 from app.core.security import verify_password, get_password_hash, create_access_token, create_refresh_token, verify_jwt_token
 from datetime import timedelta
 
-
-# ...existing code...
-
-# Only keep one router and security definition at the top
-# ...existing code...
 
 router = APIRouter(tags=["Authentication"])
 security = HTTPBearer()
