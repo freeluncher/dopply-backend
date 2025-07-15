@@ -21,38 +21,6 @@ def get_db():
     finally:
         db.close()
 
-    try:
-        payload = verify_jwt_token(credentials.credentials)
-    except Exception:
-        raise HTTPException(status_code=401, detail="Invalid or expired token")
-    
-    # Debug logging
-    print(f"[DEBUG] JWT payload: {payload}")
-    
-    # Robust: support both 'sub' and fallback to 'email' if needed
-    user_email = payload.get("sub") or payload.get("email")
-    if not user_email:
-        raise HTTPException(status_code=401, detail="Token missing user email (sub/email)")
-    
-    user = db.query(User).filter(User.email == user_email).first()
-    if not user:
-        raise HTTPException(status_code=401, detail="User not found")
-    
-    # Handle enum vs string role comparison properly
-    user_role = user.role.value if hasattr(user.role, 'value') else str(user.role)
-    
-    # For doctors, add additional fields from JWT payload
-    if user_role == "doctor":
-        # Add doctor-specific fields from JWT payload
-        if "doctor_id" in payload:
-            user.doctor_id = payload["doctor_id"]
-        if "is_valid" in payload:
-            user.is_valid = payload["is_valid"]
-    
-    print(f"[DEBUG] User from DB: id={user.id}, role={user.role} ({user_role}), doctor_id={getattr(user, 'doctor_id', None)}, is_valid={getattr(user, 'is_valid', None)}")
-    
-    return user
-
 @router.post("/login",
              summary="Login User",
              description="Authenticate user dan dapatkan JWT access token.")
