@@ -83,11 +83,16 @@ def login_user(user: LoginRequest, db: Session = Depends(get_db)):
         jwt_payload["is_valid"] = is_valid
         jwt_payload["doctor_id"] = db_user.id
 
-    # Add gestational_age for patient
+    # Add gestational_age for patient (calculated from hpht)
     if role_value == "patient":
         patient = db.query(Patient).filter(Patient.user_id == db_user.id).first()
-        if patient and hasattr(patient, "gestational_age"):
-            jwt_payload["gestational_age"] = patient.gestational_age
+        gestational_age = None
+        if patient and hasattr(patient, "hpht") and patient.hpht:
+            from datetime import date
+            today = date.today()
+            days_diff = (today - patient.hpht).days
+            gestational_age = days_diff // 7 if days_diff >= 0 else None
+        jwt_payload["gestational_age"] = gestational_age
 
     # Create both tokens
     access_token = create_access_token(jwt_payload)
