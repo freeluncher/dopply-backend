@@ -1,13 +1,19 @@
 
-# ...existing code...
+
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.orm import Session
+from typing import Optional
+from fastapi.responses import JSONResponse
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from app.schemas.user import UserRegister, UserOut, LoginRequest
+from app.schemas.refresh import LoginResponse
+from app.models.medical import User, Patient
+from app.db.session import SessionLocal
+from app.core.security import verify_password, get_password_hash, create_access_token, create_refresh_token, verify_jwt_token
+from datetime import timedelta
 
 router = APIRouter(tags=["Authentication"])
 security = HTTPBearer()
-
-# ...existing code...
-
-
-# ...existing code...
 
 def get_db():
     db = SessionLocal()
@@ -15,8 +21,6 @@ def get_db():
         yield db
     finally:
         db.close()
-
-# ...existing code...
 
 @router.get("/user/all-doctors", summary="Get all doctors", description="Return all doctors in the database.")
 def get_all_doctors(db: Session = Depends(get_db)):
@@ -32,19 +36,6 @@ def get_all_doctors(db: Session = Depends(get_db)):
             "photo_url": getattr(doctor, "photo_url", None)
         })
     return {"status": "success", "doctors": result}
-
-# Move all imports to the top
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
-from typing import Optional
-from fastapi.responses import JSONResponse
-from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from app.schemas.user import UserRegister, UserOut, LoginRequest
-from app.schemas.refresh import LoginResponse
-from app.models.medical import User, Patient
-from app.db.session import SessionLocal
-from app.core.security import verify_password, get_password_hash, create_access_token, create_refresh_token, verify_jwt_token
-from datetime import timedelta
 
 router = APIRouter(tags=["Authentication"])
 security = HTTPBearer()
