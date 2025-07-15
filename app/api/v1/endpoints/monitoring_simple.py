@@ -27,10 +27,10 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(securit
         logger.info(f"Authorization header: Bearer {credentials.credentials}")
         payload = verify_jwt_token(credentials.credentials)
         logger.info(f"JWT payload: {payload}")
-        user_id = payload.get("sub")
+        user_id = payload.get("id") or payload.get("sub")
         if user_id is None:
-            logger.error("JWT missing 'sub' field (user id)")
-            raise HTTPException(status_code=401, detail="Invalid token: missing user id (sub)")
+            logger.error("JWT missing 'id' or 'sub' field (user id)")
+            raise HTTPException(status_code=401, detail="Invalid token: missing user id (id/sub)")
         user = db.query(User).filter(User.id == user_id).first()
         if user is None:
             logger.error(f"User not found for id: {user_id}")
