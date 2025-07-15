@@ -1,132 +1,130 @@
-# NEW Schemas untuk ESP32 Fetal Monitoring System - SIMPLIFIED
-from pydantic import BaseModel, validator
-from typing import List, Optional, Dict, Any
+from pydantic import BaseModel, validator, ConfigDict
+from typing import List, Optional
 from datetime import datetime
-from enum import Enum
 
-# Basic enums
-class MonitoringTypeEnum(str, Enum):
-    doctor = "doctor"  # Monitoring oleh dokter
-    patient = "patient"  # Monitoring mandiri pasien
-
-class ClassificationEnum(str, Enum):
-    normal = "normal"
-    bradycardia = "bradycardia" 
-    tachycardia = "tachycardia"
-    irregular = "irregular"
-
-class RiskLevelEnum(str, Enum):
-    low = "low"
-    medium = "medium"
-    high = "high"
-
-# NEW: ESP32 Monitoring Request
-class ESP32MonitoringRequest(BaseModel):
+# Request untuk monitoring dari frontend Flutter (setelah monitoring selesai)
+class MonitoringRequest(BaseModel):
     patient_id: int
     gestational_age: int
-    bpm_readings: List[int]  # Raw BPM data dari ESP32
-    monitoring_duration: Optional[float] = None  # dalam menit
+    bpm_data: List[int]  # List BPM dari ESP32
+    start_time: datetime
+    end_time: Optional[datetime] = None
     notes: Optional[str] = None
+    doctor_notes: Optional[str] = None
     
     @validator('gestational_age')
     def validate_gestational_age(cls, v):
-        if not 1 <= v <= 42:
-            raise ValueError('Gestational age must be between 1 and 42 weeks')
+        if not 20 <= v <= 42:
+            raise ValueError('Gestational age must be between 20 and 42 weeks')
         return v
     
-    @validator('bpm_readings')
-    def validate_bpm_readings(cls, v):
+    @validator('bpm_data')
+    def validate_bpm_data(cls, v):
         if not v:
-            raise ValueError('BPM readings cannot be empty')
+            raise ValueError('BPM data cannot be empty')
         for bpm in v:
-            if not 0 <= bpm <= 300:
-                raise ValueError('BPM values must be between 0 and 300')
+            if not 50 <= bpm <= 200:
+                raise ValueError('BPM values must be between 50 and 200')
         return v
 
-# NEW: Classification Result
-class MonitoringClassificationResult(BaseModel):
-    classification: ClassificationEnum
-    average_bpm: float
-    risk_level: RiskLevelEnum  
-    recommendations: List[str]
-    variability: float
-    min_bpm: int
-    max_bpm: int
-    total_readings: int
-    is_irregular: bool
-    normal_range: Dict[str, int]
-
-# NEW: ESP32 Monitoring Response
-class ESP32MonitoringResponse(BaseModel):
-    success: bool
-    message: str
-    record_id: int
-    classification_result: MonitoringClassificationResult
-
-# NEW: Monitoring History
-class MonitoringRecord(BaseModel):
+# Response untuk monitoring
+class MonitoringResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    
     id: int
     patient_id: int
-    doctor_id: Optional[int] = None
-    monitoring_type: MonitoringTypeEnum
-    gestational_age: int
-    start_time: datetime
-    end_time: Optional[datetime] = None
-    monitoring_duration: float
-    classification: ClassificationEnum
+    classification: str
     average_bpm: float
-    notes: str
-    doctor_notes: str
-    shared_with_doctor: bool = False
-    created_at: datetime
+    gestational_age: int
+    monitoring_duration: float
+    message: str
 
-class MonitoringHistoryResponse(BaseModel):
-    success: bool
-    data: List[MonitoringRecord]
-    total_count: int
-    current_page: int
-    total_pages: int
-
-# NEW: Share Monitoring
+# Request untuk share monitoring ke dokter
 class ShareMonitoringRequest(BaseModel):
     record_id: int
     doctor_id: int
     notes: Optional[str] = None
 
+# Response untuk share monitoring
 class ShareMonitoringResponse(BaseModel):
     success: bool
     message: str
-    shared_at: datetime
+    notification_id: Optional[int] = None
 
-# NEW: Assigned Patients
-class AssignedPatient(BaseModel):
-    patient_id: int
+# Response untuk history monitoring
+class MonitoringHistoryItem(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    
+    id: int
     patient_name: str
-    assigned_date: str
-    status: str
-    contact_info: str
-
-class AssignedPatientsResponse(BaseModel):
-    success: bool
-    patients: List[AssignedPatient]
-
-# KEEP: BPM Classification for backward compatibility
-class FetalBPMClassificationRequest(BaseModel):
-    bpm_readings: List[int]
+    start_time: datetime
+    classification: str
+    average_bpm: float
     gestational_age: int
-    
-    @validator('gestational_age')
-    def validate_gestational_age(cls, v):
-        if not 1 <= v <= 42:
-            raise ValueError('Gestational age must be between 1 and 42 weeks')
-        return v
-    
-    @validator('bpm_readings')
-    def validate_bpm_readings(cls, v):
-        if not v:
-            raise ValueError('BPM readings cannot be empty')
-        return v
+    notes: Optional[str] = None
+    doctor_notes: Optional[str] = None
+    shared_with_doctor: bool
 
-class FetalBPMClassificationResponse(BaseModel):
+class MonitoringHistoryResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    
+    records: List[MonitoringHistoryItem]
+    total_count: int
+
+# Request untuk admin verifikasi dokter
+class DoctorVerificationRequest(BaseModel):
+    doctor_id: int
+    is_verified: bool = True
+
+# Response untuk admin verifikasi dokter
+class DoctorVerificationResponse(BaseModel):
     success: bool
-    data: Dict[str, Any]
+    message: str
+    doctor_name: str
+
+# Request untuk dokter menambah pasien
+class AddPatientRequest(BaseModel):
+    patient_email: str
+    notes: Optional[str] = None
+
+# Response untuk dokter menambah pasien
+class AddPatientResponse(BaseModel):
+    success: bool
+    message: str
+    patient_name: Optional[str] = None
+
+# Item untuk list pasien dokter
+class PatientListItem(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    
+    id: int
+    name: str
+    email: str
+    hpht: Optional[datetime] = None
+    gestational_age_weeks: Optional[int] = None
+    last_monitoring: Optional[datetime] = None
+
+# Response untuk list pasien dokter
+class PatientListResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    
+    patients: List[PatientListItem]
+    total_count: int
+
+# Item notifikasi
+class NotificationItem(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    
+    id: int
+    from_patient_name: str
+    record_id: int
+    message: str
+    created_at: datetime
+    is_read: bool
+
+# Response untuk list notifikasi
+class NotificationListResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    
+    notifications: List[NotificationItem]
+    unread_count: int

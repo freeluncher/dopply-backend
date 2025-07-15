@@ -3,12 +3,10 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import JSONResponse
 import logging
 from app.api.v1.endpoints import user
-from app.api.v1.endpoints import fetal_monitoring
+from app.api.v1.endpoints import monitoring_simple
 from app.api.v1.endpoints import admin_doctor_validation
 from app.api.v1.endpoints import token_verify
-from app.api.v1.endpoints import patient_crud
 from app.api.v1.endpoints import refresh
-from app.api.v1.endpoints import doctor_dashboard
 from app.core.config import settings
 from app.db.session import engine
 from app.db.base import Base
@@ -26,144 +24,58 @@ from starlette.status import HTTP_408_REQUEST_TIMEOUT, HTTP_429_TOO_MANY_REQUEST
 # Create all tables
 Base.metadata.create_all(bind=engine)
 
-# Initialize FastAPI app with comprehensive metadata
+# Initialize FastAPI app with clean metadata
 app = FastAPI(
-    title="Dopply Backend API",
-    version="2.0.0",
+    title="🩺 Dopply Backend API",
     description="""
-    ## Dopply Modern Fetal Monitoring System API
-    
-    A comprehensive backend API for modern fetal heart rate monitoring and pregnancy management.
-    
-    ### 🆕 Features (Version 2.0 - July 2025)
-    - **Modern Fetal Monitoring System** - AI-powered fetal heart rate classification
-    - **Advanced Session Management** - Complete monitoring session lifecycle with sharing
-    - **Pregnancy Information Tracking** - Gestational age tracking and risk assessment
-    - **Enhanced Record Management** - Improved data structure for better compatibility
-    - **Local Time Support (WIB)** - All timestamps use Indonesia local time (UTC+7)
-    - **Updated Database Schema** - New tables for fetal monitoring and pregnancy info
-    
-    ### 🔐 Authentication
-    All endpoints (except login/register) require Bearer Token authentication:
-    ```
-    Authorization: Bearer <your_jwt_token>
-    ```
-    
-    ### 🏥 User Roles
-    - **admin**: Full access to all endpoints
-    - **doctor**: Patient management, monitoring, validation requests
-    - **patient**: Own records, monitoring, doctor interaction
-    
-    ### 📊 Key Data Models
-    - **Fetal Heart Rate Data**: Real-time monitoring with quality assessment
-    - **Monitoring Sessions**: Complete session lifecycle management
-    - **Pregnancy Information**: Gestational age and risk tracking
-    - **User Management**: Role-based access with demographics
-    
-    ### 🕒 Time Zone
-    All timestamps are in **Indonesia Local Time (WIB/UTC+7)**
+## Fetal Heart Rate Monitoring System
+
+Simple and clean API untuk monitoring detak jantung janin.
+Backend yang disederhanakan dengan fokus pada fitur inti.
+
+### Fitur Utama:
+- 🔐 **Authentication**: User management dengan JWT
+- 📊 **Monitoring**: Submit dan ambil riwayat monitoring  
+- 👩‍⚕️ **Doctor-Patient**: Manajemen relasi dokter-pasien
+- 🔔 **Notifications**: Sistem notifikasi real-time
+- 👨‍💼 **Admin**: Verifikasi dokter oleh admin
+
+### Quick Start:
+1. Register akun sebagai patient/doctor/admin
+2. Login untuk mendapatkan access token
+3. Gunakan token untuk mengakses fitur monitoring
     """,
+    version="2.0.0",
     contact={
-        "name": "Dopply Development Team",
-        "email": "support@dopply.my.id",
+        "name": "Dopply Team",
+        "email": "support@dopply.com",
     },
-    license_info={
-        "name": "MIT",
-    },
-    servers=[
-        {
-            "url": "https://dopply.my.id/api/v1",
-            "description": "Production server"
-        },
-        {
-            "url": "http://localhost:8000/api/v1",
-            "description": "Development server"
-        }
-    ],
-    openapi_tags=[
+    tags_metadata=[
         {
             "name": "Authentication",
-            "description": "🔐 User authentication endpoints (login, register, token management)",
-            "externalDocs": {
-                "description": "Authentication Guide",
-                "url": "https://dopply.my.id/docs/auth"
-            }
+            "description": "🔐 User authentication & JWT token management",
         },
         {
-            "name": "User Management",
-            "description": "👤 User profile management, photo upload, account settings",
-            "externalDocs": {
-                "description": "User Management Guide", 
-                "url": "https://dopply.my.id/docs/users"
-            }
+            "name": "Monitoring", 
+            "description": "📊 Fetal heart rate monitoring & history",
         },
         {
-            "name": "Fetal Monitoring",
-            "description": "🆕 🤖 Advanced fetal heart rate monitoring with AI-powered classification and real-time analysis",
-            "externalDocs": {
-                "description": "Fetal Monitoring Documentation",
-                "url": "https://dopply.my.id/docs/fetal-monitoring"
-            }
+            "name": "Admin",
+            "description": "👨‍💼 Admin functions for doctor verification",
         },
-        {
-            "name": "Pregnancy Management", 
-            "description": "🆕 🤱 Pregnancy information tracking, gestational age monitoring, and risk assessment",
-            "externalDocs": {
-                "description": "Pregnancy Management Guide",
-                "url": "https://dopply.my.id/docs/pregnancy"
-            }
-        },
-        {
-            "name": "Medical Records",
-            "description": "📋 Medical record management with enhanced filtering and classification",
-            "externalDocs": {
-                "description": "Medical Records Guide",
-                "url": "https://dopply.my.id/docs/records"
-            }
-        },
-        {
-            "name": "Doctor Dashboard",
-            "description": "👨‍⚕️ Doctor-specific endpoints for patient management, statistics, and enhanced workflow",
-            "externalDocs": {
-                "description": "Doctor Dashboard Guide",
-                "url": "https://dopply.my.id/docs/doctor-dashboard"
-            }
-        },
-        {
-            "name": "Patient Management",
-            "description": "🏥 Patient CRUD operations, doctor-patient associations, and profile management",
-            "externalDocs": {
-                "description": "Patient Management Guide",
-                "url": "https://dopply.my.id/docs/patient-management"
-            }
-        },
-        {
-            "name": "Admin Functions",
-            "description": "⚙️ Administrative functions, user management, and system configuration",
-            "externalDocs": {
-                "description": "Admin Guide",
-                "url": "https://dopply.my.id/docs/admin"
-            }
-        },
-        {
-            "name": "Doctor Validation",
-            "description": "🎖️ Doctor validation workflow and approval process for admin users",
-            "externalDocs": {
-                "description": "Doctor Validation Guide",
-                "url": "https://dopply.my.id/docs/doctor-validation"
-            }
-        }
     ]
 )
 
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("dopply")
 
-# Include routers with tags matching Postman grouping
-app.include_router(doctor_dashboard.router, prefix="/api/v1")  # Doctor dashboard first for enhanced endpoints
+# Include routers - simplified according to FIX.md
 app.include_router(user.router, prefix="/api/v1")
-app.include_router(fetal_monitoring.router, prefix="/api/v1")  # New fetal monitoring endpoints
+app.include_router(monitoring_simple.router, prefix="/api/v1")  # Main monitoring endpoints
 app.include_router(admin_doctor_validation.router, prefix="/api/v1/admin")
 app.include_router(token_verify.router, prefix="/api/v1")
-app.include_router(patient_crud.router, prefix="/api/v1")
+
 app.include_router(refresh.router, prefix="/api/v1/auth")
 
 # Serve static files for user photos

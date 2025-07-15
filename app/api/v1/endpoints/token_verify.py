@@ -2,10 +2,10 @@ from fastapi import APIRouter, Depends, HTTPException, Security
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 from app.db.session import SessionLocal
-from app.models.medical import User, Doctor
+from app.models.medical import User
 from app.core.security import verify_jwt_token
 
-router = APIRouter()
+router = APIRouter(tags=["Authentication"])
 security = HTTPBearer()
 
 def get_db():
@@ -15,7 +15,7 @@ def get_db():
     finally:
         db.close()
 
-@router.get("/token/verify", tags=["Authentication"])
+@router.get("/token/verify")
 def verify_token(credentials: HTTPAuthorizationCredentials = Security(security), db: Session = Depends(get_db)):
     token = credentials.credentials
     try:
@@ -39,16 +39,11 @@ def verify_token(credentials: HTTPAuthorizationCredentials = Security(security),
         "role": user.role.value if hasattr(user.role, 'value') else str(user.role)
     }
     
-    # If user is a doctor, include is_valid from doctors table
+    # If user is a doctor, include is_valid from users table
     if response["role"] == "doctor":
-        doctor = db.query(Doctor).filter(Doctor.doctor_id == user.id).first()
-        if doctor:
-            response["is_valid"] = doctor.is_valid
-            response["doctor_id"] = doctor.doctor_id
-            print(f"[DEBUG] token/verify - Doctor data: is_valid={doctor.is_valid}, doctor_id={doctor.doctor_id}")
-        else:
-            response["is_valid"] = False
-            print(f"[DEBUG] token/verify - No doctor record found for user {user.id}")
+        response["is_valid"] = user.is_verified if user.is_verified is not None else False
+        response["doctor_id"] = user.id
+        print(f"[DEBUG] token/verify - Doctor data: is_valid={user.is_verified}, doctor_id={user.id}")
     
     print(f"[DEBUG] token/verify - Final response: {response}")
     return response

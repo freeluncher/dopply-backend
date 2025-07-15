@@ -6,7 +6,7 @@ from app.schemas.refresh import RefreshTokenRequest, RefreshTokenResponse, Error
 from app.db.session import SessionLocal
 from app.core.security import verify_refresh_token, create_access_token, create_refresh_token
 
-router = APIRouter()
+router = APIRouter(tags=["Authentication"])
 
 def get_db():
     db = SessionLocal()
@@ -17,8 +17,7 @@ def get_db():
 
 @router.post("/refresh", 
             response_model=RefreshTokenResponse, 
-            tags=["Authentication"],
-            summary="🔄 Refresh Access Token",
+            summary="Refresh Token",
             description="Exchange a valid refresh token for a new access token and optionally a new refresh token",
             responses={
                 200: {
@@ -88,11 +87,8 @@ def refresh_token(request: RefreshTokenRequest, db: Session = Depends(get_db)):
         
         # Add doctor-specific data if applicable
         if role_value == "doctor":
-            from app.models.medical import Doctor
-            doctor = db.query(Doctor).filter(Doctor.doctor_id == user.id).first()
-            if doctor:
-                jwt_payload["is_valid"] = doctor.is_valid
-                jwt_payload["doctor_id"] = doctor.doctor_id
+            jwt_payload["is_valid"] = user.is_verified if user.is_verified is not None else False
+            jwt_payload["doctor_id"] = user.id
         
         # Create new access token
         access_token = create_access_token(jwt_payload)
