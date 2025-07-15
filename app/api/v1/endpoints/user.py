@@ -98,6 +98,11 @@ def login_user(user: LoginRequest, db: Session = Depends(get_db)):
     access_token = create_access_token(jwt_payload)
     refresh_token = create_refresh_token(jwt_payload)
 
+    # Log JWT payload for debugging
+    import logging
+    logger = logging.getLogger("jwt_login")
+    logger.info(f"JWT payload sent to frontend: {jwt_payload}")
+
     # Return response with both tokens
     return {
         "access_token": access_token,
