@@ -41,6 +41,9 @@ class MonitoringService:
             duration = (request.end_time - request.start_time).total_seconds() / 60
         
         # Buat record baru
+        # Ambil user dari DB untuk cek role
+        user = db.query(User).filter(User.id == user_id).first()
+        doctor_id = user_id if user and user.role == UserRole.doctor else None
         record = Record(
             patient_id=request.patient_id,
             start_time=request.start_time,
@@ -51,7 +54,8 @@ class MonitoringService:
             notes=request.notes or "",
             doctor_notes=request.doctor_notes or "",
             monitoring_duration=duration,
-            created_by=user_id
+            created_by=user_id,
+            doctor_id=doctor_id
         )
         
         db.add(record)
