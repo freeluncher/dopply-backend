@@ -12,6 +12,8 @@ def get_all_doctors(db: Session = Depends(get_db)):
             "photo_url": getattr(doctor, "photo_url", None)
         })
     return {"status": "success", "doctors": result}
+
+# Move all imports to the top
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import Optional
