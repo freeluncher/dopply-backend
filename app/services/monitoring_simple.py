@@ -77,9 +77,28 @@ class MonitoringService:
                 except:
                     pass
             
+            # Ambil info dokter jika record sudah dibagikan ke dokter
+            doctor_id = getattr(record, "doctor_id", None)
+            shared_with_id = getattr(record, "shared_with", None)
+            doctor_name = None
+            doctor_email = None
+            # Prioritaskan shared_with jika ada
+            if shared_with_id:
+                doctor = db.query(User).filter(User.id == shared_with_id).first()
+                if doctor:
+                    doctor_name = doctor.name
+                    doctor_email = doctor.email
+            elif doctor_id:
+                doctor = db.query(User).filter(User.id == doctor_id).first()
+                if doctor:
+                    doctor_name = doctor.name
+                    doctor_email = doctor.email
             record_list.append({
                 "id": record.id,
                 "patient_name": patient.name if patient else "Unknown",
+                "doctor_id": shared_with_id or doctor_id,
+                "doctor_name": doctor_name,
+                "doctor_email": doctor_email,
                 "start_time": record.start_time,
                 "classification": record.classification or "unclassified",
                 "average_bpm": average_bpm,
