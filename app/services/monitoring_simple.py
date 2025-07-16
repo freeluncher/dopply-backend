@@ -24,54 +24,11 @@ class MonitoringService:
                 return "takikardia"
             else:
                 return "normal"
-        else:
-            return "unclassified"
-    
-    @staticmethod
-    def save_monitoring_record(db: Session, request, user_id: int) -> Dict[str, Any]:
-        """Simpan hasil monitoring ke database"""
-        
-        # Klasifikasi BPM
-        classification = MonitoringService.classify_bpm(request.bpm_data, request.gestational_age)
-        average_bpm = sum(request.bpm_data) / len(request.bpm_data) if request.bpm_data else 0
-        
-        # Hitung durasi monitoring
-        duration = 0
-        if request.end_time and request.start_time:
-            duration = (request.end_time - request.start_time).total_seconds() / 60
-        
-        # Buat record baru
-        # Ambil user dari DB untuk cek role
-        user = db.query(User).filter(User.id == user_id).first()
-        doctor_id = user_id if user and user.role == UserRole.doctor else None
-        record = Record(
-            patient_id=request.patient_id,
-            start_time=request.start_time,
-            end_time=request.end_time or get_local_now(),
-            bpm_data=request.bpm_data,
-            classification=classification,
-            gestational_age=request.gestational_age,
-            notes=request.notes or "",
-            doctor_notes=request.doctor_notes or "",
-            monitoring_duration=duration,
-            created_by=user_id,
-            doctor_id=doctor_id
-        )
-        
-        db.add(record)
-        db.commit()
-        db.refresh(record)
-        
-        return {
-            "id": record.id,
-            "patient_id": record.patient_id,
-            "classification": classification,
-            "average_bpm": average_bpm,
-            "gestational_age": record.gestational_age,
-            "monitoring_duration": duration,
-            "message": f"Monitoring berhasil disimpan dengan klasifikasi: {classification}"
-        }
-    
+            # Ambil info dokter jika ada
+            doctor_id = getattr(record, "doctor_id", None)
+            doctor_name = None
+            doctor_email = None
+        # ...existing code...
     @staticmethod
     def get_monitoring_history(db: Session, user_id: int, user_role: str, 
                               patient_id: Optional[int] = None, 
