@@ -7,6 +7,7 @@ from app.api.v1.endpoints import monitoring_simple
 from app.api.v1.endpoints import admin_doctor_validation
 from app.api.v1.endpoints import token_verify
 from app.api.v1.endpoints import refresh
+from app.api.v1.endpoints import patient
 from app.core.config import settings
 from app.db.session import engine
 from app.db.base import Base
@@ -77,6 +78,7 @@ app.include_router(admin_doctor_validation.router, prefix="/api/v1/admin")
 app.include_router(token_verify.router, prefix="/api/v1")
 
 app.include_router(refresh.router, prefix="/api/v1/auth")
+app.include_router(patient.router, prefix="/api/v1")
 
 # Serve static files for user photos
 app.mount(
