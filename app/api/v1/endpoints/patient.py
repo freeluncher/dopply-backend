@@ -1,3 +1,4 @@
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.models.medical import User, Patient
@@ -10,7 +11,6 @@ from datetime import datetime
 
 router = APIRouter(prefix="/patient", tags=["Patient"])
 security = HTTPBearer()
-
 class PatientUpdateRequest(BaseModel):
     user_id: int
     name: Optional[str] = None
@@ -19,6 +19,37 @@ class PatientUpdateRequest(BaseModel):
     birth_date: Optional[datetime] = None
     address: Optional[str] = None
     medical_note: Optional[str] = None
+
+@router.get("/{id}", summary="Get biodata pasien")
+def get_patient_biodata(
+    id: int,
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    db: Session = Depends(get_db)
+):
+    payload = verify_jwt_token(credentials.credentials)
+    if payload.get("role") != "patient":
+        raise HTTPException(status_code=403, detail="Hanya pasien yang dapat mengakses biodata")
+    user_id = payload.get("id")
+    patient = db.query(Patient).filter(Patient.id == id, Patient.user_id == user_id).first()
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user or not patient:
+        raise HTTPException(status_code=404, detail="Data pasien tidak ditemukan")
+    return {
+        "status": "success",
+        "patient": {
+            "id": patient.id,
+            "user_id": user.id,
+            "name": patient.name,
+            "email": patient.email,
+            "hpht": patient.hpht,
+            "birth_date": patient.birth_date,
+            "address": patient.address,
+            "medical_note": patient.medical_note
+        }
+    }
+
+
+
 
 @router.put("/{id}", summary="Update biodata pasien")
 def update_patient_biodata(

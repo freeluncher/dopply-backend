@@ -7,6 +7,7 @@ on:
 
 jobs:
   deploy:
+    if: false  # Dinonaktifkan sementara agar tidak auto deploy
     runs-on: ubuntu-latest
 
     steps:
