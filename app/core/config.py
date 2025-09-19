@@ -14,8 +14,10 @@ class Settings(BaseSettings):
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7  # Refresh tokens last 7 days
     REFRESH_SECRET_KEY: Optional[str] = None  # Will use SECRET_KEY if not provided
 
-    class Config:
-        env_file = ".env"
+    model_config = {
+        "env_file": ".env",
+        "env_file_encoding": "utf-8"
+    }
 
     @property
     def refresh_secret_key(self) -> str:
