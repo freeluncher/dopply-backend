@@ -19,6 +19,7 @@ class MonitoringService:
         # Buat record baru
         user = db.query(User).filter(User.id == user_id).first()
         doctor_id = user_id if user and getattr(user, 'role', None) == UserRole.doctor else None
+        shared_with = user_id if user and getattr(user, 'role', None) == UserRole.doctor else None
         record = Record(
             patient_id=request.patient_id,
             start_time=request.start_time,
@@ -30,7 +31,8 @@ class MonitoringService:
             doctor_notes=request.doctor_notes or "",
             monitoring_duration=duration,
             created_by=user_id,
-            doctor_id=doctor_id
+            doctor_id=doctor_id,
+            shared_with=shared_with
         )
         db.add(record)
         db.commit()

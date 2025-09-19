@@ -1,8 +1,9 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from sqlalchemy.orm import Session
 from typing import Optional
 from fastapi.responses import JSONResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from pydantic import BaseModel
 from app.schemas.user import UserRegister, UserOut, LoginRequest
 from app.schemas.refresh import LoginResponse
 from app.models.medical import User, Patient
@@ -10,6 +11,7 @@ from app.db.session import SessionLocal
 from app.core.security import verify_password, get_password_hash, create_access_token, create_refresh_token, verify_jwt_token
 from datetime import timedelta
 
+import os
 
 router = APIRouter(tags=["Authentication"])
 security = HTTPBearer()
@@ -20,6 +22,125 @@ def get_db():
         yield db
     finally:
         db.close()
+
+
+class DoctorProfileUpdateRequest(BaseModel):
+    name: Optional[str] = None
+    email: Optional[str] = None
+    specialization: Optional[str] = None
+    photo_url: Optional[str] = None
+
+# Upload foto profil pasien
+@router.post("/patient/profile/photo", summary="Upload foto profil pasien")
+async def upload_patient_photo(
+    file: UploadFile = File(...),
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    db: Session = Depends(get_db)
+):
+    payload = verify_jwt_token(credentials.credentials)
+    if payload.get("role") != "patient":
+        raise HTTPException(status_code=403, detail="Hanya pasien yang dapat upload foto")
+    user_id = payload.get("id")
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User pasien tidak ditemukan")
+    # Simpan file ke folder static/user_photos
+    folder = os.path.join("app", "static", "user_photos")
+    os.makedirs(folder, exist_ok=True)
+    filename = f"patient_{user_id}_{file.filename}"
+    file_path = os.path.join(folder, filename)
+    with open(file_path, "wb") as f:
+        f.write(await file.read())
+    url = f"/static/user_photos/{filename}"
+    user.photo_url = url
+    db.commit()
+    db.refresh(user)
+    return {"status": "success", "photo_url": url}
+
+@router.post("/doctor/profile/photo", summary="Upload foto profil dokter")
+async def upload_doctor_photo(
+    file: UploadFile = File(...),
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    db: Session = Depends(get_db)
+):
+    payload = verify_jwt_token(credentials.credentials)
+    if payload.get("role") != "doctor":
+        raise HTTPException(status_code=403, detail="Hanya dokter yang dapat upload foto")
+    user_id = payload.get("id")
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User dokter tidak ditemukan")
+    # Simpan file ke folder static/user_photos
+    folder = os.path.join("app", "static", "user_photos")
+    os.makedirs(folder, exist_ok=True)
+    filename = f"doctor_{user_id}_{file.filename}"
+    file_path = os.path.join(folder, filename)
+    with open(file_path, "wb") as f:
+        f.write(await file.read())
+    url = f"/static/user_photos/{filename}"
+    user.photo_url = url
+    db.commit()
+    db.refresh(user)
+    return {"status": "success", "photo_url": url}
+
+@router.put("/doctor/profile", summary="Update profil dokter")
+def update_doctor_profile(
+    req: DoctorProfileUpdateRequest,
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    db: Session = Depends(get_db)
+):
+    payload = verify_jwt_token(credentials.credentials)
+    if payload.get("role") != "doctor":
+        raise HTTPException(status_code=403, detail="Hanya dokter yang dapat mengupdate profil dokter")
+    user_id = payload.get("id")
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User dokter tidak ditemukan")
+    # Update data
+    if req.name:
+        user.name = req.name
+    if req.email:
+        user.email = req.email
+    if req.specialization:
+        user.specialization = req.specialization
+    if req.photo_url:
+        user.photo_url = req.photo_url
+    db.commit()
+    db.refresh(user)
+    return {
+        "status": "success",
+        "doctor": {
+            "id": user.id,
+            "name": user.name,
+            "email": user.email,
+            "specialization": user.specialization,
+            "photo_url": user.photo_url
+        }
+    }
+
+@router.get("/doctor/profile", summary="Get profil dokter")
+def get_doctor_profile(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    db: Session = Depends(get_db)
+):
+    payload = verify_jwt_token(credentials.credentials)
+    if payload.get("role") != "doctor":
+        raise HTTPException(status_code=403, detail="Hanya dokter yang dapat mengakses profil dokter")
+    user_id = payload.get("id")
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User dokter tidak ditemukan")
+    return {
+        "status": "success",
+        "doctor": {
+            "id": user.id,
+            "name": user.name,
+            "email": user.email,
+            "specialization": user.specialization,
+            "photo_url": user.photo_url,
+            "is_verified": getattr(user, "is_verified", None)
+        }
+    }
 
 @router.post("/login",
              summary="Login User",
