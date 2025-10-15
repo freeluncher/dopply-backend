@@ -95,7 +95,6 @@ temp_*.py
 
 # Database management scripts
 reseed_*.py
-seed_*.py
 manage_*.py
 complete_*.py
 efficient_*.py
