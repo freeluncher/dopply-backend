@@ -1,31 +1,19 @@
-from fastapi import APIRouter, Depends, HTTPException, Security
-from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from app.db.session import SessionLocal
+from app.db.session import get_db
 from app.models.medical import User
-from app.core.security import verify_jwt_token
+from app.core.dependencies import get_current_user
 from app.services.admin_doctor_validation_service import AdminDoctorValidationService
 
 router = APIRouter(tags=["Admin"])
-security = HTTPBearer()
-
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
 
 def get_current_admin(
-    credentials: HTTPAuthorizationCredentials = Security(security),
-    db: Session = Depends(get_db)
-):
-    token = credentials.credentials
-    payload = verify_jwt_token(token)
-    user = db.query(User).filter(User.email == payload["sub"]).first()
-    if not user or user.role.value != "admin":
+    current_user: User = Depends(get_current_user)
+) -> User:
+    """Get current user and verify admin role"""
+    if current_user.role.value != "admin":
         raise HTTPException(status_code=403, detail="Admin access required")
-    return user
+    return current_user
 
 @router.get("/doctor/validation-requests/count")
 def count_doctor_validation_requests(db: Session = Depends(get_db), admin: User = Depends(get_current_admin)):

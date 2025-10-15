@@ -64,6 +64,18 @@ class MonitoringService:
                 return "takikardia"
             else:
                 return "normal"
+        else:
+            return "unclassified"
+    
+    @staticmethod
+    def classify_bpm_simple(avg_bpm: int) -> str:
+        """Classify BPM into categories (simple version for frontend)"""
+        if avg_bpm < 110:
+            return "Bradycardia"
+        elif avg_bpm > 160:
+            return "Tachycardia"
+        else:
+            return "Normal"
             # Ambil info dokter jika ada
             doctor_id = getattr(record, "doctor_id", None)
             doctor_name = None

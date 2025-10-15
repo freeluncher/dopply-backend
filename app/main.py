@@ -3,7 +3,6 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import JSONResponse
 import logging
 from app.api.v1.endpoints import user
-from app.api.v1.endpoints import monitoring_simple
 from app.api.v1.endpoints import admin_doctor_validation
 from app.api.v1.endpoints import token_verify
 from app.api.v1.endpoints import refresh
@@ -71,14 +70,22 @@ Backend yang disederhanakan dengan fokus pada fitur inti.
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("dopply")
 
-# Include routers - simplified according to FIX.md
+# Include routers - simplified and unified
 app.include_router(user.router, prefix="/api/v1")
-app.include_router(monitoring_simple.router, prefix="/api/v1")  # Main monitoring endpoints
+
+# Use unified monitoring endpoints (replaces both monitoring_simple and monitoring_requirements)
+from app.api.v1.endpoints import monitoring
+app.include_router(monitoring.router, prefix="/api/v1")
+
 app.include_router(admin_doctor_validation.router, prefix="/api/v1/admin")
 app.include_router(token_verify.router, prefix="/api/v1")
-
 app.include_router(refresh.router, prefix="/api/v1/auth")
 app.include_router(patient.router, prefix="/api/v1")
+
+# Other endpoint routers
+from app.api.v1.endpoints import doctor, auth
+app.include_router(doctor.router, prefix="/api/v1")
+app.include_router(auth.router, prefix="/api/v1")
 
 # Serve static files for user photos
 app.mount(
@@ -90,6 +97,17 @@ app.mount(
 # Logging configuration
 logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s [%(name)s] %(message)s')
 logger = logging.getLogger("dopply")
+
+# CORS Configuration
+from fastapi.middleware.cors import CORSMiddleware
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # In production, specify exact domains
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type"],
+)
 
 # Middleware (e.g., CORS)
 @app.on_event("startup")
