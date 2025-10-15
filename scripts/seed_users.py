@@ -70,11 +70,13 @@ def create_seed_users():
             existing_patient_record = db.query(Patient).filter(Patient.user_id == patient_user_db.id).first()
             
             if not existing_patient_record:
+                from datetime import timedelta
+                hpht = date.today() - timedelta(weeks=20)
                 patient_record = Patient(
                     user_id=patient_user_db.id,
                     name="Pasien Test",
                     email="pasien@gmail.com",
-                    hpht=date(2024, 10, 1),  # HPHT untuk testing (3 bulan lalu)
+                    hpht=hpht,  # HPHT = hari ini - 20 minggu
                     birth_date=date(1995, 5, 15),
                     address="Jakarta, Indonesia",
                     medical_note="Patient test untuk development"
