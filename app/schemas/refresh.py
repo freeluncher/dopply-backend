@@ -4,26 +4,28 @@ from typing import Optional
 class RefreshTokenRequest(BaseModel):
     refresh_token: str
     
-    class Config:
-        schema_extra = {
+    model_config = {
+        "json_schema_extra": {
             "example": {
                 "refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
             }
         }
+    }
 
 class RefreshTokenResponse(BaseModel):
     access_token: str
     refresh_token: Optional[str] = None
     token_type: str = "bearer"
     
-    class Config:
-        schema_extra = {
+    model_config = {
+        "json_schema_extra": {
             "example": {
                 "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
                 "refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
                 "token_type": "bearer"
             }
         }
+    }
 
 class LoginResponse(BaseModel):
     access_token: str

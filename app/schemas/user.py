@@ -20,20 +20,22 @@ class UserOut(UserBase):
     id: int
     role: str
 
-    class Config:
-        orm_mode = True
+    model_config = {
+        "from_attributes": True
+    }
 
 class LoginRequest(BaseModel):
     email: str
     password: str
 
-    class Config:
-        schema_extra = {
+    model_config = {
+        "json_schema_extra": {
             "example": {
                 "email": "user@email.com",
                 "password": "string"
             }
         }
+    }
 
 class UserRegister(BaseModel):
     name: str
@@ -52,5 +54,6 @@ class UserOut(BaseModel):
     is_active: Optional[bool] = None
     photo_url: Optional[str] = None
 
-    class Config:
-        orm_mode = True
+    model_config = {
+        "from_attributes": True
+    }
